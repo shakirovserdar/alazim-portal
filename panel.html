@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Al Azim Portal — Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0e1526; --navy2:#141d33; --navy3:#1a2542; --gold:#d4af37; --gold2:#b8962e;
+    --ink:#eef1f8; --mut:#93a0bd; --line:#243354; --ok:#7ee2a8; --bad:#f28b82;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{ font-family:'Manrope',sans-serif; background:var(--navy); color:var(--ink); min-height:100vh; }
+
+  header{
+    display:flex; align-items:center; gap:12px; padding:14px 18px;
+    background:var(--navy2); border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:10;
+  }
+  .mark{ width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+         background:linear-gradient(135deg,var(--gold),var(--gold2)); color:#0e1526; font-weight:800; font-size:15px; }
+  header h1{ font-size:16px; font-weight:800; flex:1 }
+  header .who{ font-size:12px; color:var(--mut); text-align:right; line-height:1.4 }
+  header button{ background:none; border:1px solid var(--line); color:var(--mut); border-radius:8px;
+                 padding:7px 12px; font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer; }
+  header button:hover{ color:var(--ink); border-color:var(--gold) }
+
+  nav{ display:flex; gap:6px; padding:12px 18px 0; background:var(--navy2); border-bottom:1px solid var(--line); overflow-x:auto }
+  nav button{
+    background:none; border:none; color:var(--mut); font-family:inherit; font-size:14px; font-weight:700;
+    padding:10px 14px; cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap;
+  }
+  nav button.on{ color:var(--gold); border-bottom-color:var(--gold) }
+  nav .badge{ background:var(--bad); color:#1a0d0d; border-radius:20px; font-size:11px; padding:1px 7px; margin-left:5px; font-weight:800 }
+
+  main{ padding:18px; max-width:1100px; margin:0 auto }
+  .empty{ color:var(--mut); text-align:center; padding:50px 20px; font-size:14.5px }
+
+  .row{
+    background:var(--navy2); border:1px solid var(--line); border-radius:12px;
+    padding:14px 16px; margin-bottom:10px;
+  }
+  .row .top{ display:flex; align-items:center; gap:10px; flex-wrap:wrap }
+  .row .name{ font-weight:800; font-size:15px }
+  .row .uni{ color:var(--mut); font-size:13px; flex:1; min-width:120px }
+  .pill{ font-size:11.5px; font-weight:800; padding:4px 10px; border-radius:20px; letter-spacing:.3px }
+  .row .meta{ color:var(--mut); font-size:12.5px; margin-top:8px; line-height:1.6 }
+  .row .actions{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center }
+  select{
+    background:var(--navy); color:var(--ink); border:1px solid var(--line); border-radius:8px;
+    padding:8px 10px; font-family:inherit; font-size:13px; outline:none;
+  }
+  .btn{ border:none; border-radius:8px; padding:9px 14px; font-family:inherit; font-size:13px;
+        font-weight:800; cursor:pointer; }
+  .btn.gold{ background:linear-gradient(135deg,var(--gold),var(--gold2)); color:#0e1526 }
+  .btn.ok{ background:var(--ok); color:#0c1f14 }
+  .btn.bad{ background:none; border:1px solid var(--bad); color:var(--bad) }
+  .btn:disabled{ opacity:.5; cursor:wait }
+  .hist{ margin-top:10px; border-top:1px dashed var(--line); padding-top:8px; font-size:12px; color:var(--mut); display:none }
+  .hist.show{ display:block }
+  .hist div{ padding:2px 0 }
+  .linkish{ background:none;border:none;color:var(--mut);font-family:inherit;font-size:12px;cursor:pointer;text-decoration:underline;padding:0 }
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    background:var(--navy3); border:1px solid var(--gold); color:var(--ink);
+    padding:11px 18px; border-radius:10px; font-size:13.5px; font-weight:700;
+    opacity:0; pointer-events:none; transition:opacity .25s; z-index:50; max-width:90vw;
+  }
+  .toast.show{ opacity:1 }
+</style>
+</head>
+<body>
+  <header>
+    <div class="mark">AZ</div>
+    <h1>Al Azim Portal</h1>
+    <div class="who" id="who"></div>
+    <button id="logout">Çıkış</button>
+  </header>
+
+  <nav>
+    <button class="on" data-tab="apps">Başvurular</button>
+    <button data-tab="agencies">Acentalar</button>
+    <button data-tab="pending">Onay bekleyen<span class="badge" id="pendBadge" style="display:none">0</span></button>
+  </nav>
+
+  <main id="main"><div class="empty">Yükleniyor…</div></main>
+  <div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script>
+const M = document.getElementById("main");
+let me = null, tab = "apps";
+
+function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show");
+                   setTimeout(()=>el.classList.remove("show"), 3000); }
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dt = s => new Date(s).toLocaleString("tr-TR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+
+// ---------- Giriş kontrolü ----------
+(async () => {
+  const { data:{ session } } = await sb.auth.getSession();
+  if (!session){ location.href = "index.html"; return; }
+  const { data: prof } = await sb.from("profiles").select("*").eq("id", session.user.id).single();
+  me = prof;
+  if (!me || me.role === "pending"){
+    M.innerHTML = '<div class="empty">Hesabınız onay bekliyor. Yönetici onayladığında panele erişebileceksiniz.</div>';
+    document.querySelector("nav").style.display = "none";
+    document.getElementById("who").textContent = session.user.email;
+    return;
+  }
+  if (me.role === "rejected"){
+    M.innerHTML = '<div class="empty">Hesabınıza erişim kapatılmıştır.</div>';
+    document.querySelector("nav").style.display = "none"; return;
+  }
+  document.getElementById("who").innerHTML =
+    esc(me.full_name || me.email) + "<br>" + (me.role === "admin" ? "Yönetici" : "Acenta");
+  if (me.role !== "admin") document.querySelectorAll("nav button")[1].style.display =
+                           document.querySelectorAll("nav button")[2].style.display = "none";
+  loadTab();
+  if (me.role === "admin") refreshPendingBadge();
+})();
+
+document.getElementById("logout").onclick = async () => { await sb.auth.signOut(); location.href="index.html"; };
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); tab = b.dataset.tab; loadTab();
+});
+
+function loadTab(){
+  M.innerHTML = '<div class="empty">Yükleniyor…</div>';
+  if (tab==="apps") loadApps();
+  else if (tab==="agencies") loadAgencies();
+  else loadPending();
+}
+
+// ---------- BAŞVURULAR ----------
+async function loadApps(){
+  const { data, error } = await sb.from("applications")
+    .select("*, students(first_name,last_name,email,phone,citizenship,lang,agency_id,agencies(name))")
+    .order("created_at",{ascending:false}).limit(200);
+  if (error){ M.innerHTML = `<div class="empty">Hata: ${esc(error.message)}</div>`; return; }
+  if (!data.length){ M.innerHTML = '<div class="empty">Henüz başvuru yok. Sitedeki form bağlandığında burada görünecek.</div>'; return; }
+
+  M.innerHTML = data.map(a => {
+    const s = a.students || {};
+    const st = STATUS_LABELS[a.status] || {t:a.status,c:"#888"};
+    const opts = Object.entries(STATUS_LABELS)
+      .map(([k,v]) => `<option value="${k}" ${k===a.status?"selected":""}>${v.t}</option>`).join("");
+    return `<div class="row" data-id="${a.id}">
+      <div class="top">
+        <span class="name">${esc(s.first_name)} ${esc(s.last_name)}</span>
+        <span class="uni">${esc(a.university)}${a.program1 ? " · " + esc(a.program1):""}</span>
+        <span class="pill" style="background:${st.c}22;color:${st.c};border:1px solid ${st.c}55">${st.t}</span>
+      </div>
+      <div class="meta">
+        ${esc(s.email)} · ${esc(s.phone)} · ${esc(s.citizenship)}
+        ${s.agencies ? " · Acenta: <b>"+esc(s.agencies.name)+"</b>" : " · Direkt başvuru"}
+        · ${dt(a.created_at)}
+      </div>
+      ${me.role==="admin" ? `
+      <div class="actions">
+        <select class="stSel">${opts}</select>
+        <button class="btn gold stSave">Durumu kaydet + öğrenciye mail</button>
+        <button class="linkish histBtn">Geçmiş</button>
+      </div>
+      <div class="hist"></div>` : `
+      <div class="actions"><button class="linkish histBtn">Geçmiş</button></div>
+      <div class="hist"></div>`}
+    </div>`;
+  }).join("");
+
+  M.querySelectorAll(".stSave").forEach(btn => btn.onclick = () => saveStatus(btn));
+  M.querySelectorAll(".histBtn").forEach(btn => btn.onclick = () => showHist(btn));
+}
+
+async function saveStatus(btn){
+  const row = btn.closest(".row"), id = row.dataset.id;
+  const newStatus = row.querySelector(".stSel").value;
+  btn.disabled = true;
+  const { error } = await sb.from("applications").update({ status:newStatus }).eq("id", id);
+  if (error){ toast("Hata: " + error.message); btn.disabled=false; return; }
+
+  // Öğrenciye otomatik mail (Vercel fonksiyonu üzerinden)
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    const r = await fetch("/api/durum-mail", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + session.access_token },
+      body: JSON.stringify({ application_id:id })
+    });
+    toast(r.ok ? "Durum güncellendi, öğrenciye mail gönderildi ✓"
+               : "Durum güncellendi — mail gönderilemedi (api logunu kontrol et)");
+  }catch(e){ toast("Durum güncellendi — mail fonksiyonuna ulaşılamadı"); }
+  loadApps();
+}
+
+async function showHist(btn){
+  const row = btn.closest(".row"), box = row.querySelector(".hist");
+  if (box.classList.contains("show")){ box.classList.remove("show"); return; }
+  const { data } = await sb.from("application_events")
+    .select("*").eq("application_id", row.dataset.id).order("created_at",{ascending:false});
+  box.innerHTML = (data && data.length)
+    ? data.map(e => `<div>${dt(e.created_at)} — ${(STATUS_LABELS[e.old_status]||{t:e.old_status||"—"}).t}
+                     → <b>${(STATUS_LABELS[e.new_status]||{t:e.new_status}).t}</b></div>`).join("")
+    : "<div>Henüz durum değişikliği yok.</div>";
+  box.classList.add("show");
+}
+
+// ---------- ACENTALAR ----------
+async function loadAgencies(){
+  const { data, error } = await sb.from("agencies").select("*").order("created_at",{ascending:false});
+  if (error){ M.innerHTML = `<div class="empty">Hata: ${esc(error.message)}</div>`; return; }
+  if (!data.length){ M.innerHTML = '<div class="empty">Kayıtlı acenta yok.</div>'; return; }
+  const stMap = { pending:["Onay bekliyor","#f8c86a"], approved:["Aktif","#7ee2a8"],
+                  rejected:["Reddedildi","#f28b82"], suspended:["Donduruldu","#93a0bd"] };
+  M.innerHTML = data.map(a => {
+    const [t,c] = stMap[a.status] || [a.status,"#888"];
+    return `<div class="row" data-id="${a.id}">
+      <div class="top">
+        <span class="name">${esc(a.name)}</span>
+        <span class="uni">${esc(a.city)} ${esc(a.country)}</span>
+        <span class="pill" style="background:${c}22;color:${c};border:1px solid ${c}55">${t}</span>
+      </div>
+      <div class="meta">${esc(a.contact_name)} · ${esc(a.email)} · ${esc(a.phone)} · Komisyon: %${a.commission_rate ?? 0}</div>
+      <div class="actions">
+        ${a.status!=="approved" ? '<button class="btn ok agOk">Onayla</button>':""}
+        ${a.status==="approved" ? '<button class="btn bad agSus">Dondur</button>':""}
+        ${a.status==="pending" ? '<button class="btn bad agNo">Reddet</button>':""}
+      </div>
+    </div>`;
+  }).join("");
+  M.querySelectorAll(".agOk").forEach(b => b.onclick = () => setAgency(b,"approved"));
+  M.querySelectorAll(".agNo").forEach(b => b.onclick = () => setAgency(b,"rejected"));
+  M.querySelectorAll(".agSus").forEach(b => b.onclick = () => setAgency(b,"suspended"));
+}
+
+async function setAgency(btn, status){
+  const id = btn.closest(".row").dataset.id;
+  btn.disabled = true;
+  const { error } = await sb.from("agencies").update({ status }).eq("id", id);
+  if (error){ toast("Hata: "+error.message); btn.disabled=false; return; }
+  // Acentanın kullanıcı rolünü de eşitle
+  const role = status==="approved" ? "agency" : (status==="rejected" ? "rejected" : "pending");
+  await sb.from("profiles").update({ role }).eq("agency_id", id);
+  toast("Acenta güncellendi ✓"); loadAgencies(); refreshPendingBadge();
+}
+
+// ---------- ONAY BEKLEYEN KULLANICILAR ----------
+async function loadPending(){
+  const { data, error } = await sb.from("profiles").select("*")
+    .eq("role","pending").order("created_at",{ascending:false});
+  if (error){ M.innerHTML = `<div class="empty">Hata: ${esc(error.message)}</div>`; return; }
+  if (!data.length){ M.innerHTML = '<div class="empty">Onay bekleyen kullanıcı yok.</div>'; return; }
+  M.innerHTML = data.map(p => `<div class="row" data-id="${p.id}">
+      <div class="top"><span class="name">${esc(p.full_name)||"(isim yok)"}</span>
+        <span class="uni">${esc(p.email)} · ${esc(p.phone)}</span></div>
+      <div class="meta">Kayıt: ${dt(p.created_at)}</div>
+      <div class="actions">
+        <button class="btn ok pOk">Onayla (acenta yap)</button>
+        <button class="btn bad pNo">Reddet</button>
+      </div></div>`).join("");
+  M.querySelectorAll(".pOk").forEach(b => b.onclick = () => approveUser(b));
+  M.querySelectorAll(".pNo").forEach(b => b.onclick = async () => {
+    const id = b.closest(".row").dataset.id;
+    await sb.from("profiles").update({ role:"rejected" }).eq("id", id);
+    toast("Reddedildi"); loadPending(); refreshPendingBadge();
+  });
+}
+
+async function approveUser(btn){
+  const row = btn.closest(".row"), id = row.dataset.id;
+  const name = row.querySelector(".name").textContent;
+  btn.disabled = true;
+  // Kullanıcı için acenta kaydı aç (yoksa) ve rolünü agency yap
+  const { data: prof } = await sb.from("profiles").select("*").eq("id", id).single();
+  let agencyId = prof.agency_id;
+  if (!agencyId){
+    const { data: ag, error } = await sb.from("agencies")
+      .insert({ name: prof.full_name || prof.email, contact_name: prof.full_name,
+                email: prof.email, phone: prof.phone, status:"approved", owner_id: id })
+      .select().single();
+    if (error){ toast("Hata: "+error.message); btn.disabled=false; return; }
+    agencyId = ag.id;
+  } else {
+    await sb.from("agencies").update({ status:"approved" }).eq("id", agencyId);
+  }
+  await sb.from("profiles").update({ role:"agency", agency_id: agencyId }).eq("id", id);
+  toast(name + " onaylandı ✓"); loadPending(); refreshPendingBadge();
+}
+
+async function refreshPendingBadge(){
+  const { count } = await sb.from("profiles").select("*",{count:"exact",head:true}).eq("role","pending");
+  const b = document.getElementById("pendBadge");
+  if (count > 0){ b.textContent = count; b.style.display = "inline-block"; }
+  else b.style.display = "none";
+}
+</script>
+</body>
+</html>
