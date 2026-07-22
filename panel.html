@@ -15,11 +15,8 @@
   *{margin:0;padding:0;box-sizing:border-box}
   body{ font-family:'Manrope',sans-serif; background:var(--navy); color:var(--ink); min-height:100vh; }
 
-  header{
-    display:flex; align-items:center; gap:12px; padding:14px 18px;
-    background:var(--navy2); border-bottom:1px solid var(--line);
-    position:sticky; top:0; z-index:10;
-  }
+  header{ display:flex; align-items:center; gap:12px; padding:14px 18px;
+          background:var(--navy2); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:10; }
   .mark{ width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
          background:linear-gradient(135deg,var(--gold),var(--gold2)); color:#0e1526; font-weight:800; font-size:15px; }
   header h1{ font-size:16px; font-weight:800; flex:1 }
@@ -29,46 +26,53 @@
   header button:hover{ color:var(--ink); border-color:var(--gold) }
 
   nav{ display:flex; gap:6px; padding:12px 18px 0; background:var(--navy2); border-bottom:1px solid var(--line); overflow-x:auto }
-  nav button{
-    background:none; border:none; color:var(--mut); font-family:inherit; font-size:14px; font-weight:700;
-    padding:10px 14px; cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap;
-  }
+  nav button{ background:none; border:none; color:var(--mut); font-family:inherit; font-size:14px; font-weight:700;
+              padding:10px 14px; cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap; }
   nav button.on{ color:var(--gold); border-bottom-color:var(--gold) }
   nav .badge{ background:var(--bad); color:#1a0d0d; border-radius:20px; font-size:11px; padding:1px 7px; margin-left:5px; font-weight:800 }
 
   main{ padding:18px; max-width:1100px; margin:0 auto }
   .empty{ color:var(--mut); text-align:center; padding:50px 20px; font-size:14.5px }
 
-  .row{
-    background:var(--navy2); border:1px solid var(--line); border-radius:12px;
-    padding:14px 16px; margin-bottom:10px;
-  }
+  .row{ background:var(--navy2); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:10px; }
   .row .top{ display:flex; align-items:center; gap:10px; flex-wrap:wrap }
   .row .name{ font-weight:800; font-size:15px }
   .row .uni{ color:var(--mut); font-size:13px; flex:1; min-width:120px }
   .pill{ font-size:11.5px; font-weight:800; padding:4px 10px; border-radius:20px; letter-spacing:.3px }
   .row .meta{ color:var(--mut); font-size:12.5px; margin-top:8px; line-height:1.6 }
   .row .actions{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center }
-  select{
+  select, .frm input, .frm select{
     background:var(--navy); color:var(--ink); border:1px solid var(--line); border-radius:8px;
-    padding:8px 10px; font-family:inherit; font-size:13px; outline:none;
-  }
-  .btn{ border:none; border-radius:8px; padding:9px 14px; font-family:inherit; font-size:13px;
-        font-weight:800; cursor:pointer; }
+    padding:9px 11px; font-family:inherit; font-size:13.5px; outline:none; }
+  .frm input:focus, .frm select:focus{ border-color:var(--gold) }
+  .btn{ border:none; border-radius:8px; padding:9px 14px; font-family:inherit; font-size:13px; font-weight:800; cursor:pointer; }
   .btn.gold{ background:linear-gradient(135deg,var(--gold),var(--gold2)); color:#0e1526 }
   .btn.ok{ background:var(--ok); color:#0c1f14 }
   .btn.bad{ background:none; border:1px solid var(--bad); color:var(--bad) }
   .btn:disabled{ opacity:.5; cursor:wait }
-  .hist{ margin-top:10px; border-top:1px dashed var(--line); padding-top:8px; font-size:12px; color:var(--mut); display:none }
-  .hist.show{ display:block }
-  .hist div{ padding:2px 0 }
+  .hist,.docs{ margin-top:10px; border-top:1px dashed var(--line); padding-top:8px; font-size:12.5px; color:var(--mut); display:none }
+  .hist.show,.docs.show{ display:block }
+  .hist div,.docs div{ padding:2px 0 }
+  .docs a{ color:var(--gold); text-decoration:none; font-weight:700 }
   .linkish{ background:none;border:none;color:var(--mut);font-family:inherit;font-size:12px;cursor:pointer;text-decoration:underline;padding:0 }
-  .toast{
-    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
-    background:var(--navy3); border:1px solid var(--gold); color:var(--ink);
-    padding:11px 18px; border-radius:10px; font-size:13.5px; font-weight:700;
-    opacity:0; pointer-events:none; transition:opacity .25s; z-index:50; max-width:90vw;
-  }
+
+  /* Yeni öğrenci formu */
+  .frm{ background:var(--navy2); border:1px solid var(--line); border-radius:12px; padding:20px; }
+  .frm h3{ font-size:13px; color:var(--gold); letter-spacing:.1em; margin:18px 0 10px; text-transform:uppercase }
+  .frm h3:first-child{ margin-top:0 }
+  .fgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:10px }
+  .fgrid label{ display:block; font-size:11.5px; font-weight:700; color:var(--mut); margin-bottom:4px;
+                text-transform:uppercase; letter-spacing:.5px }
+  .fgrid input,.fgrid select{ width:100% }
+  .fgrid input[type=file]{ padding:7px; font-size:12px }
+  .frm .btn{ margin-top:18px; padding:12px 22px; font-size:14px }
+  .fmsg{ margin-top:12px; font-size:13.5px; min-height:18px }
+  .fmsg.err{ color:var(--bad) } .fmsg.ok{ color:var(--ok) }
+
+  .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+          background:var(--navy3); border:1px solid var(--gold); color:var(--ink);
+          padding:11px 18px; border-radius:10px; font-size:13.5px; font-weight:700;
+          opacity:0; pointer-events:none; transition:opacity .25s; z-index:50; max-width:90vw; }
   .toast.show{ opacity:1 }
 </style>
 </head>
@@ -81,9 +85,10 @@
   </header>
 
   <nav>
-    <button class="on" data-tab="apps">Başvurular</button>
-    <button data-tab="agencies">Acentalar</button>
-    <button data-tab="pending">Onay bekleyen<span class="badge" id="pendBadge" style="display:none">0</span></button>
+    <button class="on" data-tab="apps" id="tabApps">Başvurular</button>
+    <button data-tab="add" id="tabAdd">+ Yeni Öğrenci</button>
+    <button data-tab="agencies" id="tabAgencies">Acentalar</button>
+    <button data-tab="pending" id="tabPending">Onay bekleyen<span class="badge" id="pendBadge" style="display:none">0</span></button>
   </nav>
 
   <main id="main"><div class="empty">Yükleniyor…</div></main>
@@ -93,12 +98,13 @@
 <script src="js/config.js"></script>
 <script>
 const M = document.getElementById("main");
-let me = null, tab = "apps";
+let me = null, tab = "apps", agencyList = [];
 
 function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show");
-                   setTimeout(()=>el.classList.remove("show"), 3000); }
+                   setTimeout(()=>el.classList.remove("show"), 3200); }
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const dt = s => new Date(s).toLocaleString("tr-TR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+const DOC_TYPES = { passport:"Pasaport", diploma:"Diploma", transcript:"Transkript", photo:"Biyometrik Foto" };
 
 // ---------- Giriş kontrolü ----------
 (async () => {
@@ -118,10 +124,16 @@ const dt = s => new Date(s).toLocaleString("tr-TR",{day:"2-digit",month:"2-digit
   }
   document.getElementById("who").innerHTML =
     esc(me.full_name || me.email) + "<br>" + (me.role === "admin" ? "Yönetici" : "Acenta");
-  if (me.role !== "admin") document.querySelectorAll("nav button")[1].style.display =
-                           document.querySelectorAll("nav button")[2].style.display = "none";
+  if (me.role !== "admin"){
+    document.getElementById("tabApps").textContent = "Öğrencilerim";
+    document.getElementById("tabAgencies").style.display = "none";
+    document.getElementById("tabPending").style.display = "none";
+  } else {
+    refreshPendingBadge();
+    const { data } = await sb.from("agencies").select("id,name").eq("status","approved").order("name");
+    agencyList = data || [];
+  }
   loadTab();
-  if (me.role === "admin") refreshPendingBadge();
 })();
 
 document.getElementById("logout").onclick = async () => { await sb.auth.signOut(); location.href="index.html"; };
@@ -133,24 +145,30 @@ document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
 function loadTab(){
   M.innerHTML = '<div class="empty">Yükleniyor…</div>';
   if (tab==="apps") loadApps();
+  else if (tab==="add") renderAddForm();
   else if (tab==="agencies") loadAgencies();
   else loadPending();
 }
 
-// ---------- BAŞVURULAR ----------
+// ---------- BAŞVURULAR / ÖĞRENCİLERİM ----------
 async function loadApps(){
   const { data, error } = await sb.from("applications")
-    .select("*, students(first_name,last_name,email,phone,citizenship,lang,agency_id,agencies(name))")
+    .select("*, students(id,first_name,last_name,email,phone,citizenship,lang,agency_id,agencies(name))")
     .order("created_at",{ascending:false}).limit(200);
   if (error){ M.innerHTML = `<div class="empty">Hata: ${esc(error.message)}</div>`; return; }
-  if (!data.length){ M.innerHTML = '<div class="empty">Henüz başvuru yok. Sitedeki form bağlandığında burada görünecek.</div>'; return; }
+  if (!data.length){
+    M.innerHTML = me.role==="admin"
+      ? '<div class="empty">Henüz başvuru yok.</div>'
+      : '<div class="empty">Henüz öğrenciniz yok. "+ Yeni Öğrenci" sekmesinden ilk öğrencinizi ekleyin.</div>';
+    return;
+  }
 
   M.innerHTML = data.map(a => {
     const s = a.students || {};
     const st = STATUS_LABELS[a.status] || {t:a.status,c:"#888"};
     const opts = Object.entries(STATUS_LABELS)
       .map(([k,v]) => `<option value="${k}" ${k===a.status?"selected":""}>${v.t}</option>`).join("");
-    return `<div class="row" data-id="${a.id}">
+    return `<div class="row" data-id="${a.id}" data-sid="${s.id||""}">
       <div class="top">
         <span class="name">${esc(s.first_name)} ${esc(s.last_name)}</span>
         <span class="uni">${esc(a.university)}${a.program1 ? " · " + esc(a.program1):""}</span>
@@ -161,20 +179,19 @@ async function loadApps(){
         ${s.agencies ? " · Acenta: <b>"+esc(s.agencies.name)+"</b>" : " · Direkt başvuru"}
         · ${dt(a.created_at)}
       </div>
-      ${me.role==="admin" ? `
       <div class="actions">
-        <select class="stSel">${opts}</select>
-        <button class="btn gold stSave">Durumu kaydet + öğrenciye mail</button>
+        ${me.role==="admin" ? `<select class="stSel">${opts}</select>
+        <button class="btn gold stSave">Durumu kaydet + öğrenciye mail</button>` : ""}
         <button class="linkish histBtn">Geçmiş</button>
+        <button class="linkish docBtn">Belgeler</button>
       </div>
-      <div class="hist"></div>` : `
-      <div class="actions"><button class="linkish histBtn">Geçmiş</button></div>
-      <div class="hist"></div>`}
+      <div class="hist"></div><div class="docs"></div>
     </div>`;
   }).join("");
 
   M.querySelectorAll(".stSave").forEach(btn => btn.onclick = () => saveStatus(btn));
   M.querySelectorAll(".histBtn").forEach(btn => btn.onclick = () => showHist(btn));
+  M.querySelectorAll(".docBtn").forEach(btn => btn.onclick = () => showDocs(btn));
 }
 
 async function saveStatus(btn){
@@ -183,8 +200,6 @@ async function saveStatus(btn){
   btn.disabled = true;
   const { error } = await sb.from("applications").update({ status:newStatus }).eq("id", id);
   if (error){ toast("Hata: " + error.message); btn.disabled=false; return; }
-
-  // Öğrenciye otomatik mail (Vercel fonksiyonu üzerinden)
   try{
     const { data:{ session } } = await sb.auth.getSession();
     const r = await fetch("/api/durum-mail", {
@@ -208,6 +223,130 @@ async function showHist(btn){
                      → <b>${(STATUS_LABELS[e.new_status]||{t:e.new_status}).t}</b></div>`).join("")
     : "<div>Henüz durum değişikliği yok.</div>";
   box.classList.add("show");
+}
+
+async function showDocs(btn){
+  const row = btn.closest(".row"), box = row.querySelector(".docs"), sid = row.dataset.sid;
+  if (box.classList.contains("show")){ box.classList.remove("show"); return; }
+  box.innerHTML = "<div>Yükleniyor…</div>"; box.classList.add("show");
+  const { data, error } = await sb.from("documents").select("*").eq("student_id", sid);
+  if (error){ box.innerHTML = "<div>Hata: "+esc(error.message)+"</div>"; return; }
+  if (!data.length){ box.innerHTML = "<div>Bu öğrenci için yüklenmiş belge yok.</div>"; return; }
+  const items = [];
+  for (const d of data){
+    const { data:u } = await sb.storage.from("documents").createSignedUrl(d.storage_path, 3600);
+    items.push(`<div>📄 ${DOC_TYPES[d.doc_type]||esc(d.doc_type)||"Belge"} —
+      ${u?.signedUrl ? `<a href="${u.signedUrl}" target="_blank" rel="noopener">görüntüle / indir</a>` : "bağlantı alınamadı"}
+      <span style="opacity:.6">(${dt(d.created_at)})</span></div>`);
+  }
+  box.innerHTML = items.join("");
+}
+
+// ---------- YENİ ÖĞRENCİ ----------
+function renderAddForm(){
+  const agencySel = me.role==="admin"
+    ? `<div><label>Acenta</label><select id="f_agency">
+         <option value="">Direkt (Al Azim)</option>
+         ${agencyList.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("")}
+       </select></div>`
+    : "";
+  M.innerHTML = `<div class="frm">
+    <h3>Öğrenci Bilgileri</h3>
+    <div class="fgrid">
+      <div><label>Ad *</label><input id="f_first"></div>
+      <div><label>Soyad *</label><input id="f_last"></div>
+      <div><label>Baba Adı</label><input id="f_father"></div>
+      <div><label>Anne Adı</label><input id="f_mother"></div>
+      <div><label>Doğum Tarihi</label><input id="f_dob" type="date"></div>
+      <div><label>Cinsiyet</label><select id="f_gender">
+        <option value="">—</option><option>Erkek</option><option>Kadın</option></select></div>
+      <div><label>E-posta *</label><input id="f_email" type="email"></div>
+      <div><label>Telefon (WhatsApp) *</label><input id="f_phone"></div>
+      <div><label>Pasaport No *</label><input id="f_passport"></div>
+      <div><label>Vatandaşlık</label><input id="f_nat" value="Türkmenistan"></div>
+      <div><label>İkamet Ülkesi</label><input id="f_res" value="Türkmenistan"></div>
+      <div><label>Mail Dili</label><select id="f_lang">
+        <option value="tk">Türkmençe</option><option value="tr">Türkçe</option>
+        <option value="ru">Русский</option><option value="en">English</option></select></div>
+      ${agencySel}
+    </div>
+    <h3>Başvuru</h3>
+    <div class="fgrid">
+      <div><label>Üniversite *</label><input id="f_uni" placeholder="İstanbul Medipol Üniversitesi"></div>
+      <div><label>1. Tercih Bölüm *</label><input id="f_p1"></div>
+      <div><label>2. Tercih</label><input id="f_p2"></div>
+      <div><label>3. Tercih</label><input id="f_p3"></div>
+      <div><label>Seviye</label><select id="f_level">
+        <option>Lisans</option><option>Önlisans</option><option>Yüksek Lisans</option>
+        <option>Doktora</option><option>Dil Kursu</option></select></div>
+      <div><label>Eğitim Dili</label><select id="f_elang">
+        <option>İngilizce</option><option>Türkçe</option></select></div>
+      <div><label>Dönem</label><input id="f_sem" value="Fall 2026-2027"></div>
+    </div>
+    <h3>Belgeler (isteğe bağlı, max 10MB)</h3>
+    <div class="fgrid">
+      <div><label>Pasaport</label><input type="file" id="d_passport" accept=".pdf,.jpg,.jpeg,.png"></div>
+      <div><label>Diploma</label><input type="file" id="d_diploma" accept=".pdf,.jpg,.jpeg,.png"></div>
+      <div><label>Transkript</label><input type="file" id="d_transcript" accept=".pdf,.jpg,.jpeg,.png"></div>
+      <div><label>Biyometrik Foto</label><input type="file" id="d_photo" accept=".jpg,.jpeg,.png"></div>
+    </div>
+    <button class="btn gold" id="f_save">Öğrenciyi kaydet</button>
+    <div class="fmsg" id="f_msg"></div>
+  </div>`;
+  document.getElementById("f_save").onclick = saveStudent;
+}
+
+async function saveStudent(){
+  const v = id => (document.getElementById(id)?.value || "").trim();
+  const msg = document.getElementById("f_msg"), btn = document.getElementById("f_save");
+  if (!v("f_first")||!v("f_last")||!v("f_email")||!v("f_phone")||!v("f_passport")||!v("f_uni")||!v("f_p1")){
+    msg.className="fmsg err"; msg.textContent="Yıldızlı alanlar zorunlu."; return;
+  }
+  btn.disabled = true; msg.className="fmsg"; msg.textContent="Kaydediliyor…";
+
+  const agency_id = me.role==="admin" ? (v("f_agency") || null) : me.agency_id;
+
+  // 1) öğrenci
+  const { data: stu, error: e1 } = await sb.from("students").insert({
+    agency_id,
+    first_name:v("f_first"), last_name:v("f_last"),
+    father_name:v("f_father"), mother_name:v("f_mother"),
+    birth_date:v("f_dob")||null, gender:v("f_gender"),
+    email:v("f_email"), phone:v("f_phone"),
+    passport_no:v("f_passport"), citizenship:v("f_nat"),
+    residence:v("f_res"), lang:v("f_lang")||"tk"
+  }).select().single();
+  if (e1){ btn.disabled=false; msg.className="fmsg err"; msg.textContent="Hata: "+e1.message; return; }
+
+  // 2) başvuru
+  const { error: e2 } = await sb.from("applications").insert({
+    student_id: stu.id, university:v("f_uni"),
+    program1:v("f_p1"), program2:v("f_p2"), program3:v("f_p3"),
+    level:v("f_level"), edu_lang:v("f_elang"), semester:v("f_sem")
+  });
+  if (e2){ btn.disabled=false; msg.className="fmsg err"; msg.textContent="Başvuru hatası: "+e2.message; return; }
+
+  // 3) belgeler
+  let up = 0, fail = 0;
+  for (const t of Object.keys(DOC_TYPES)){
+    const inp = document.getElementById("d_"+t);
+    const f = inp?.files?.[0];
+    if (!f) continue;
+    if (f.size > 10*1024*1024){ fail++; continue; }
+    msg.textContent = `Belge yükleniyor: ${DOC_TYPES[t]}…`;
+    const safe = f.name.replace(/[^\w.\-]+/g,"_");
+    const path = `${stu.id}/${t}_${Date.now()}_${safe}`;
+    const { error: eu } = await sb.storage.from("documents").upload(path, f);
+    if (eu){ fail++; continue; }
+    const { error: ed } = await sb.from("documents").insert({
+      student_id: stu.id, doc_type: t, storage_path: path });
+    if (ed) fail++; else up++;
+  }
+
+  msg.className="fmsg ok";
+  msg.textContent = `Öğrenci kaydedildi ✓ ${up?up+" belge yüklendi.":""} ${fail?fail+" belge yüklenemedi!":""}`;
+  toast("Öğrenci eklendi ✓");
+  setTimeout(()=>{ document.getElementById("tabApps").click(); }, 1200);
 }
 
 // ---------- ACENTALAR ----------
@@ -243,13 +382,12 @@ async function setAgency(btn, status){
   btn.disabled = true;
   const { error } = await sb.from("agencies").update({ status }).eq("id", id);
   if (error){ toast("Hata: "+error.message); btn.disabled=false; return; }
-  // Acentanın kullanıcı rolünü de eşitle
   const role = status==="approved" ? "agency" : (status==="rejected" ? "rejected" : "pending");
   await sb.from("profiles").update({ role }).eq("agency_id", id);
   toast("Acenta güncellendi ✓"); loadAgencies(); refreshPendingBadge();
 }
 
-// ---------- ONAY BEKLEYEN KULLANICILAR ----------
+// ---------- ONAY BEKLEYEN ----------
 async function loadPending(){
   const { data, error } = await sb.from("profiles").select("*")
     .eq("role","pending").order("created_at",{ascending:false});
@@ -275,7 +413,6 @@ async function approveUser(btn){
   const row = btn.closest(".row"), id = row.dataset.id;
   const name = row.querySelector(".name").textContent;
   btn.disabled = true;
-  // Kullanıcı için acenta kaydı aç (yoksa) ve rolünü agency yap
   const { data: prof } = await sb.from("profiles").select("*").eq("id", id).single();
   let agencyId = prof.agency_id;
   if (!agencyId){
