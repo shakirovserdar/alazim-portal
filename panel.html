@@ -35,6 +35,11 @@
   .empty{ color:var(--mut); text-align:center; padding:50px 20px; font-size:14.5px }
 
   .stats{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px }
+  .cards{ display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; margin-bottom:16px }
+  .cardBox{ background:var(--navy2); border:1px solid var(--line); border-radius:12px; padding:16px }
+  .cardBox .num{ font-size:26px; font-weight:800; color:var(--gold) }
+  .cardBox .lbl{ font-size:12px; color:var(--mut); font-weight:700; margin-top:3px }
+  .secTitle{ font-size:13px; color:var(--gold); letter-spacing:.1em; text-transform:uppercase; margin:16px 0 10px }
   .chip{ background:var(--navy2); border:1px solid var(--line); border-radius:20px;
          padding:6px 13px; font-size:12.5px; font-weight:700; color:var(--mut); cursor:pointer }
   .chip b{ color:var(--ink) }
@@ -97,7 +102,8 @@
   </header>
 
   <nav>
-    <button class="on" data-tab="apps" id="tabApps">Başvurular</button>
+    <button class="on" data-tab="dash" id="tabDash">Özet</button>
+    <button data-tab="apps" id="tabApps">Başvurular</button>
     <button data-tab="add" id="tabAdd">+ Yeni Öğrenci</button>
     <button data-tab="agencies" id="tabAgencies">Acentalar</button>
     <button data-tab="pending" id="tabPending">Onay bekleyen<span class="badge" id="pendBadge" style="display:none">0</span></button>
@@ -110,7 +116,7 @@
 <script src="js/config.js"></script>
 <script>
 const M = document.getElementById("main");
-let me = null, tab = "apps", agencyList = [], appsCache = [], fQ = "", fSt = "", fAg = "";
+let me = null, tab = "dash", agencyList = [], appsCache = [], fQ = "", fSt = "", fAg = "";
 
 function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show");
                    setTimeout(()=>el.classList.remove("show"), 3200); }
@@ -156,10 +162,49 @@ document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
 
 function loadTab(){
   M.innerHTML = '<div class="empty">Yükleniyor…</div>';
-  if (tab==="apps") loadApps();
+  if (tab==="dash") loadDash();
+  else if (tab==="apps") loadApps();
   else if (tab==="add") renderAddForm();
   else if (tab==="agencies") loadAgencies();
   else loadPending();
+}
+
+// ---------- ÖZET (Dashboard) ----------
+async function loadDash(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const iso = today.toISOString();
+  const [apps, stus, ags] = await Promise.all([
+    sb.from("applications").select("id,status,created_at,app_no,university,student_id,students(id,first_name,last_name,agencies(name))")
+      .order("created_at",{ascending:false}).limit(400),
+    sb.from("students").select("id,created_at"),
+    me.role==="admin" ? sb.from("agencies").select("id,status") : Promise.resolve({data:[]})
+  ]);
+  if (apps.error){ M.innerHTML = `<div class="empty">Hata: ${esc(apps.error.message)}</div>`; return; }
+  const A = apps.data||[], S = stus.data||[], G = ags.data||[];
+  const todayApps = A.filter(a=>a.created_at>=iso).length;
+  const todayStus = S.filter(s=>s.created_at>=iso).length;
+  const counts = {}; A.forEach(a=>counts[a.status]=(counts[a.status]||0)+1);
+
+  M.innerHTML = `
+    <div class="cards">
+      <div class="cardBox"><div class="num">${todayApps}</div><div class="lbl">Bugün Başvuru</div></div>
+      <div class="cardBox"><div class="num">${todayStus}</div><div class="lbl">Bugün Öğrenci</div></div>
+      <div class="cardBox"><div class="num">${S.length}</div><div class="lbl">Toplam Öğrenci</div></div>
+      <div class="cardBox"><div class="num">${A.length}</div><div class="lbl">Toplam Başvuru</div></div>
+      ${me.role==="admin" ? `<div class="cardBox"><div class="num">${G.filter(g=>g.status==="approved").length}</div>
+        <div class="lbl">Aktif Acenta</div></div>` : ""}
+    </div>
+    <div class="stats">${Object.entries(STATUS_LABELS).filter(([k])=>counts[k])
+      .map(([k,v])=>`<span class="chip" style="border-color:${v.c}55;color:${v.c}">${v.t} <b>${counts[k]}</b></span>`).join("")}</div>
+    <div class="secTitle">Son Başvurular</div>
+    ${A.slice(0,6).map(a=>{
+      const s=a.students||{}, st=STATUS_LABELS[a.status]||{t:a.status,c:"#888"};
+      return `<div class="row"><div class="top">
+        <span style="color:var(--gold);font-weight:800;font-size:12.5px">#${esc(a.app_no||"—")}</span>
+        <a class="name" style="color:var(--ink);text-decoration:none" href="ogrenci.html?sid=${s.id}">${esc(s.first_name)} ${esc(s.last_name)}</a>
+        <span class="uni">${esc(a.university)}${s.agencies?" · "+esc(s.agencies.name):""}</span>
+        <span class="pill" style="background:${st.c}22;color:${st.c};border:1px solid ${st.c}55">${st.t}</span>
+      </div></div>`;}).join("") || '<div class="empty">Henüz başvuru yok.</div>'}`;
 }
 
 // ---------- BAŞVURULAR / ÖĞRENCİLERİM ----------
@@ -228,7 +273,9 @@ function renderApps(){
       .map(([k,v]) => `<option value="${k}" ${k===a.status?"selected":""}>${v.t}</option>`).join("");
     return `<div class="row" data-id="${a.id}" data-sid="${s.id||""}">
       <div class="top">
-        <span class="name">${esc(s.first_name)} ${esc(s.last_name)}</span>
+        <span style="color:var(--gold);font-weight:800;font-size:12.5px">#${esc(a.app_no||"—")}</span>
+        <a class="name" style="color:var(--ink);text-decoration:none;border-bottom:1px dashed var(--gold)"
+           href="ogrenci.html?sid=${s.id}">${esc(s.first_name)} ${esc(s.last_name)}</a>
         <span class="uni">${esc(a.university)}${a.program1 ? " · " + esc(a.program1):""}</span>
         <span class="pill" style="background:${st.c}22;color:${st.c};border:1px solid ${st.c}55">${st.t}</span>
       </div>

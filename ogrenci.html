@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Al Azim Portal — Öğrenci</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{ --navy:#0e1526; --navy2:#141d33; --navy3:#1a2542; --gold:#d4af37; --gold2:#b8962e;
+         --ink:#eef1f8; --mut:#93a0bd; --line:#243354; --ok:#7ee2a8; --bad:#f28b82; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{ font-family:'Manrope',sans-serif; background:var(--navy); color:var(--ink); min-height:100vh }
+  header{ display:flex; align-items:center; gap:12px; padding:14px 18px;
+          background:var(--navy2); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:10 }
+  .mark{ width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+         background:linear-gradient(135deg,var(--gold),var(--gold2)); color:#0e1526; font-weight:800; font-size:15px }
+  header h1{ font-size:16px; font-weight:800; flex:1 }
+  header a{ color:var(--mut); font-size:13px; text-decoration:none; border:1px solid var(--line);
+            border-radius:8px; padding:7px 12px; font-weight:700 }
+  header a:hover{ color:var(--ink); border-color:var(--gold) }
+  main{ padding:18px; max-width:1000px; margin:0 auto }
+  .empty{ color:var(--mut); text-align:center; padding:50px 20px }
+  .card{ background:var(--navy2); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:14px }
+  .card h2{ font-size:13px; color:var(--gold); letter-spacing:.1em; text-transform:uppercase; margin-bottom:12px }
+  .fgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px }
+  .fgrid label{ display:block; font-size:11px; font-weight:700; color:var(--mut); margin-bottom:4px;
+                text-transform:uppercase; letter-spacing:.5px }
+  input,select,textarea{ width:100%; background:var(--navy); color:var(--ink); border:1px solid var(--line);
+    border-radius:8px; padding:9px 11px; font-family:inherit; font-size:13.5px; outline:none }
+  input:focus,select:focus,textarea:focus{ border-color:var(--gold) }
+  input[type=file]{ padding:7px; font-size:12px }
+  .btn{ border:none; border-radius:8px; padding:10px 16px; font-family:inherit; font-size:13px;
+        font-weight:800; cursor:pointer }
+  .btn.gold{ background:linear-gradient(135deg,var(--gold),var(--gold2)); color:#0e1526 }
+  .btn.ghost{ background:none; border:1px solid var(--line); color:var(--mut) }
+  .btn.ghost:hover{ color:var(--ink); border-color:var(--gold) }
+  .btn:disabled{ opacity:.5; cursor:wait }
+  .pill{ font-size:11.5px; font-weight:800; padding:4px 10px; border-radius:20px }
+  .appBox{ border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:10px; background:var(--navy) }
+  .appBox .top{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:6px }
+  .appBox .no{ color:var(--gold); font-weight:800; font-size:13px }
+  .appBox .uni{ font-weight:800 }
+  .appBox .meta{ color:var(--mut); font-size:12.5px; line-height:1.6 }
+  .appBox .actions{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center }
+  .notes{ margin-top:10px; border-top:1px dashed var(--line); padding-top:10px }
+  .note{ background:var(--navy3); border-radius:8px; padding:8px 11px; margin-bottom:6px; font-size:13px }
+  .note .by{ color:var(--mut); font-size:11.5px; margin-top:3px }
+  .noteAdd{ display:flex; gap:8px; margin-top:8px }
+  .docItem{ font-size:13px; color:var(--mut); padding:3px 0 }
+  .docItem a{ color:var(--gold); text-decoration:none; font-weight:700 }
+  .msg{ font-size:13px; margin-top:8px; min-height:16px }
+  .msg.ok{ color:var(--ok) } .msg.err{ color:var(--bad) }
+  .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--navy3);
+          border:1px solid var(--gold); color:var(--ink); padding:11px 18px; border-radius:10px;
+          font-size:13.5px; font-weight:700; opacity:0; pointer-events:none; transition:opacity .25s; z-index:50 }
+  .toast.show{ opacity:1 }
+</style>
+</head>
+<body>
+  <header>
+    <div class="mark">AZ</div>
+    <h1 id="title">Öğrenci</h1>
+    <a href="panel.html">← Panele dön</a>
+  </header>
+  <main id="main"><div class="empty">Yükleniyor…</div></main>
+  <div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script>
+const M = document.getElementById("main");
+const SID = new URLSearchParams(location.search).get("sid");
+let me = null, stu = null;
+
+function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show");
+                   setTimeout(()=>el.classList.remove("show"), 3200); }
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dt = s => new Date(s).toLocaleString("tr-TR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+const DOC_TYPES = { passport:"Pasaport", diploma:"Diploma", transcript:"Transkript",
+                    photo:"Biyometrik Foto", letter:"Kabul Mektubu", other:"Diğer" };
+
+(async () => {
+  const { data:{ session } } = await sb.auth.getSession();
+  if (!session){ location.href = "index.html"; return; }
+  const { data: prof } = await sb.from("profiles").select("*").eq("id", session.user.id).single();
+  me = prof;
+  if (!me || !["admin","agency"].includes(me.role)){ location.href = "panel.html"; return; }
+  if (!SID){ M.innerHTML = '<div class="empty">Öğrenci bulunamadı (sid eksik).</div>'; return; }
+  await loadAll();
+})();
+
+async function loadAll(){
+  const { data, error } = await sb.from("students")
+    .select("*, agencies(name)").eq("id", SID).single();
+  if (error || !data){ M.innerHTML = '<div class="empty">Öğrenci bulunamadı veya erişim yetkiniz yok.</div>'; return; }
+  stu = data;
+  document.getElementById("title").textContent = stu.first_name + " " + stu.last_name;
+  render();
+  loadApps(); loadDocs();
+}
+
+function render(){
+  M.innerHTML = `
+  <div class="card">
+    <h2>Öğrenci Bilgileri ${stu.agencies ? "· Acenta: "+esc(stu.agencies.name) : "· Direkt"}</h2>
+    <div class="fgrid">
+      <div><label>Ad</label><input id="s_first" value="${esc(stu.first_name)}"></div>
+      <div><label>Soyad</label><input id="s_last" value="${esc(stu.last_name)}"></div>
+      <div><label>Baba Adı</label><input id="s_father" value="${esc(stu.father_name)}"></div>
+      <div><label>Anne Adı</label><input id="s_mother" value="${esc(stu.mother_name)}"></div>
+      <div><label>Doğum Tarihi</label><input id="s_dob" type="date" value="${stu.birth_date||""}"></div>
+      <div><label>Cinsiyet</label><select id="s_gender">
+        <option value="" ${!stu.gender?"selected":""}>—</option>
+        <option ${stu.gender==="Erkek"?"selected":""}>Erkek</option>
+        <option ${stu.gender==="Kadın"?"selected":""}>Kadın</option></select></div>
+      <div><label>E-posta</label><input id="s_email" value="${esc(stu.email)}"></div>
+      <div><label>Telefon</label><input id="s_phone" value="${esc(stu.phone)}"></div>
+      <div><label>Pasaport No</label><input id="s_passport" value="${esc(stu.passport_no)}"></div>
+      <div><label>Vatandaşlık</label><input id="s_nat" value="${esc(stu.citizenship)}"></div>
+      <div><label>İkamet</label><input id="s_res" value="${esc(stu.residence)}"></div>
+      <div><label>Mail Dili</label><select id="s_lang">
+        ${["tk","tr","ru","en"].map(l=>`<option value="${l}" ${stu.lang===l?"selected":""}>${
+          ({tk:"Türkmençe",tr:"Türkçe",ru:"Русский",en:"English"})[l]}</option>`).join("")}</select></div>
+    </div>
+    <div style="margin-top:14px"><button class="btn gold" id="s_save">Bilgileri kaydet</button>
+    <span class="msg" id="s_msg"></span></div>
+  </div>
+
+  <div class="card">
+    <h2>Belgeler</h2>
+    <div id="docList" class="docItem">Yükleniyor…</div>
+    <div class="fgrid" style="margin-top:12px">
+      <div><label>Belge türü</label><select id="d_type">
+        ${Object.entries(DOC_TYPES).map(([k,v])=>`<option value="${k}">${v}</option>`).join("")}</select></div>
+      <div><label>Dosya (max 10MB)</label><input type="file" id="d_file" accept=".pdf,.jpg,.jpeg,.png"></div>
+      <div style="display:flex;align-items:flex-end"><button class="btn gold" id="d_up">Yükle</button></div>
+    </div>
+    <div class="msg" id="d_msg"></div>
+  </div>
+
+  <div class="card">
+    <h2>Başvurular</h2>
+    <div id="appList">Yükleniyor…</div>
+    <details style="margin-top:12px">
+      <summary style="cursor:pointer;color:var(--gold);font-weight:700;font-size:13.5px">+ Yeni başvuru ekle (2. üniversite vb.)</summary>
+      <div class="fgrid" style="margin-top:12px">
+        <div><label>Üniversite *</label><input id="a_uni"></div>
+        <div><label>1. Tercih *</label><input id="a_p1"></div>
+        <div><label>2. Tercih</label><input id="a_p2"></div>
+        <div><label>3. Tercih</label><input id="a_p3"></div>
+        <div><label>Seviye</label><select id="a_level">
+          <option>Lisans</option><option>Önlisans</option><option>Yüksek Lisans</option>
+          <option>Doktora</option><option>Dil Kursu</option></select></div>
+        <div><label>Eğitim Dili</label><select id="a_elang">
+          <option>İngilizce</option><option>Türkçe</option></select></div>
+        <div><label>Dönem</label><input id="a_sem" value="Fall 2026-2027"></div>
+      </div>
+      <div style="margin-top:12px"><button class="btn gold" id="a_add">Başvuruyu ekle</button>
+      <span class="msg" id="a_msg"></span></div>
+    </details>
+  </div>`;
+
+  document.getElementById("s_save").onclick = saveStudent;
+  document.getElementById("d_up").onclick = uploadDoc;
+  document.getElementById("a_add").onclick = addApp;
+}
+
+async function saveStudent(){
+  const v = id => document.getElementById(id).value.trim();
+  const msg = document.getElementById("s_msg"), btn = document.getElementById("s_save");
+  btn.disabled = true;
+  const { error } = await sb.from("students").update({
+    first_name:v("s_first"), last_name:v("s_last"), father_name:v("s_father"),
+    mother_name:v("s_mother"), birth_date:v("s_dob")||null, gender:v("s_gender"),
+    email:v("s_email"), phone:v("s_phone"), passport_no:v("s_passport"),
+    citizenship:v("s_nat"), residence:v("s_res"), lang:v("s_lang")
+  }).eq("id", SID);
+  btn.disabled = false;
+  msg.className = "msg " + (error ? "err" : "ok");
+  msg.textContent = error ? "Hata: "+error.message : "Kaydedildi ✓";
+  if (!error){ document.getElementById("title").textContent = v("s_first")+" "+v("s_last"); toast("Öğrenci güncellendi ✓"); }
+}
+
+// ---------- Belgeler ----------
+async function loadDocs(){
+  const box = document.getElementById("docList");
+  const { data, error } = await sb.from("documents").select("*").eq("student_id", SID)
+    .order("created_at",{ascending:false});
+  if (error){ box.textContent = "Hata: "+error.message; return; }
+  if (!data.length){ box.textContent = "Henüz belge yok."; return; }
+  const items = [];
+  for (const d of data){
+    const { data:u } = await sb.storage.from("documents").createSignedUrl(d.storage_path, 3600);
+    items.push(`<div class="docItem">📄 ${DOC_TYPES[d.doc_type]||esc(d.doc_type)} —
+      ${u?.signedUrl ? `<a href="${u.signedUrl}" target="_blank" rel="noopener">görüntüle / indir</a>`:"link alınamadı"}
+      <span style="opacity:.6">(${dt(d.created_at)})</span></div>`);
+  }
+  box.innerHTML = items.join("");
+}
+
+async function uploadDoc(){
+  const t = document.getElementById("d_type").value;
+  const f = document.getElementById("d_file").files[0];
+  const msg = document.getElementById("d_msg"), btn = document.getElementById("d_up");
+  if (!f){ msg.className="msg err"; msg.textContent="Dosya seç."; return; }
+  if (f.size > 10*1024*1024){ msg.className="msg err"; msg.textContent="Dosya 10MB'dan büyük."; return; }
+  btn.disabled = true; msg.className="msg"; msg.textContent="Yükleniyor…";
+  const safe = f.name.replace(/[^\w.\-]+/g,"_");
+  const path = `${SID}/${t}_${Date.now()}_${safe}`;
+  const { error: eu } = await sb.storage.from("documents").upload(path, f);
+  if (eu){ btn.disabled=false; msg.className="msg err"; msg.textContent="Hata: "+eu.message; return; }
+  const { error: ed } = await sb.from("documents").insert({ student_id:SID, doc_type:t, storage_path:path });
+  btn.disabled = false;
+  msg.className = "msg " + (ed ? "err":"ok");
+  msg.textContent = ed ? "Hata: "+ed.message : "Yüklendi ✓";
+  if (!ed){ document.getElementById("d_file").value=""; loadDocs();
+    if (t==="letter") toast("Kabul mektubu yüklendi — durumu 'Kabul mektubu gönderildi' yapıp maili tetikleyebilirsin"); }
+}
+
+// ---------- Başvurular ----------
+async function loadApps(){
+  const box = document.getElementById("appList");
+  const { data, error } = await sb.from("applications").select("*").eq("student_id", SID)
+    .order("created_at",{ascending:false});
+  if (error){ box.textContent = "Hata: "+error.message; return; }
+  if (!data.length){ box.innerHTML = '<div class="docItem">Henüz başvuru yok.</div>'; return; }
+
+  box.innerHTML = data.map(a => {
+    const st = STATUS_LABELS[a.status] || {t:a.status,c:"#888"};
+    const opts = Object.entries(STATUS_LABELS)
+      .map(([k,v])=>`<option value="${k}" ${k===a.status?"selected":""}>${v.t}</option>`).join("");
+    return `<div class="appBox" data-id="${a.id}">
+      <div class="top">
+        <span class="no">#${esc(a.app_no||"—")}</span>
+        <span class="uni">${esc(a.university)}</span>
+        <span class="pill" style="background:${st.c}22;color:${st.c};border:1px solid ${st.c}55">${st.t}</span>
+      </div>
+      <div class="meta">${[a.program1,a.program2,a.program3].filter(Boolean).map(esc).join(" · ")}
+        · ${esc(a.level)} · ${esc(a.edu_lang)} · ${esc(a.semester)} · ${dt(a.created_at)}</div>
+      ${me.role==="admin" ? `<div class="actions">
+        <select class="stSel">${opts}</select>
+        <button class="btn gold stSave">Durumu kaydet + öğrenciye mail</button>
+      </div>` : ""}
+      <div class="notes"><div class="noteList">Notlar yükleniyor…</div>
+        <div class="noteAdd">
+          <input class="noteInp" placeholder="Not ekle (ekip içi, öğrenci görmez)…">
+          <button class="btn ghost noteBtn">Ekle</button>
+        </div></div>
+    </div>`;
+  }).join("");
+
+  box.querySelectorAll(".stSave").forEach(b => b.onclick = () => saveStatus(b));
+  box.querySelectorAll(".noteBtn").forEach(b => b.onclick = () => addNote(b));
+  box.querySelectorAll(".appBox").forEach(el => loadNotes(el));
+}
+
+async function saveStatus(btn){
+  const el = btn.closest(".appBox"), id = el.dataset.id;
+  const newStatus = el.querySelector(".stSel").value;
+  btn.disabled = true;
+  const { error } = await sb.from("applications").update({ status:newStatus }).eq("id", id);
+  if (error){ toast("Hata: "+error.message); btn.disabled=false; return; }
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    const r = await fetch("/api/durum-mail", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+session.access_token },
+      body: JSON.stringify({ application_id:id })
+    });
+    toast(r.ok ? "Durum güncellendi, öğrenciye mail gönderildi ✓" : "Durum güncellendi — mail gönderilemedi");
+  }catch(e){ toast("Durum güncellendi — mail fonksiyonuna ulaşılamadı"); }
+  loadApps();
+}
+
+async function addApp(){
+  const v = id => document.getElementById(id).value.trim();
+  const msg = document.getElementById("a_msg"), btn = document.getElementById("a_add");
+  if (!v("a_uni")||!v("a_p1")){ msg.className="msg err"; msg.textContent="Üniversite ve 1. tercih zorunlu."; return; }
+  btn.disabled = true;
+  const { error } = await sb.from("applications").insert({
+    student_id:SID, university:v("a_uni"),
+    program1:v("a_p1"), program2:v("a_p2"), program3:v("a_p3"),
+    level:v("a_level"), edu_lang:v("a_elang"), semester:v("a_sem")
+  });
+  btn.disabled = false;
+  msg.className = "msg " + (error?"err":"ok");
+  msg.textContent = error ? "Hata: "+error.message : "Başvuru eklendi ✓";
+  if (!error){ toast("Yeni başvuru eklendi ✓"); loadApps(); }
+}
+
+// ---------- Notlar ----------
+async function loadNotes(el){
+  const box = el.querySelector(".noteList");
+  const { data, error } = await sb.from("notes")
+    .select("*, profiles(full_name,email)").eq("application_id", el.dataset.id)
+    .order("created_at",{ascending:false});
+  if (error){ box.textContent = "Not hatası: "+error.message; return; }
+  box.innerHTML = data.length
+    ? data.map(n => `<div class="note">${esc(n.body)}
+        <div class="by">${esc(n.profiles?.full_name || n.profiles?.email || "")} · ${dt(n.created_at)}</div></div>`).join("")
+    : '<div class="docItem">Not yok.</div>';
+}
+
+async function addNote(btn){
+  const el = btn.closest(".appBox");
+  const inp = el.querySelector(".noteInp");
+  const body = inp.value.trim();
+  if (!body) return;
+  btn.disabled = true;
+  const { error } = await sb.from("notes").insert({
+    application_id: el.dataset.id, author_id: me.id, body });
+  btn.disabled = false;
+  if (error){ toast("Hata: "+error.message); return; }
+  inp.value = ""; loadNotes(el);
+}
+</script>
+</body>
+</html>
