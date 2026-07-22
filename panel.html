@@ -34,6 +34,18 @@
   main{ padding:18px; max-width:1100px; margin:0 auto }
   .empty{ color:var(--mut); text-align:center; padding:50px 20px; font-size:14.5px }
 
+  .stats{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px }
+  .chip{ background:var(--navy2); border:1px solid var(--line); border-radius:20px;
+         padding:6px 13px; font-size:12.5px; font-weight:700; color:var(--mut); cursor:pointer }
+  .chip b{ color:var(--ink) }
+  .chip.on{ border-color:var(--gold); color:var(--gold) }
+  .tools{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px }
+  .tools input{ flex:1; min-width:200px; background:var(--navy2); color:var(--ink);
+                border:1px solid var(--line); border-radius:8px; padding:10px 13px;
+                font-family:inherit; font-size:13.5px; outline:none }
+  .tools input:focus{ border-color:var(--gold) }
+  .tools select{ background:var(--navy2) }
+
   .row{ background:var(--navy2); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:10px; }
   .row .top{ display:flex; align-items:center; gap:10px; flex-wrap:wrap }
   .row .name{ font-weight:800; font-size:15px }
@@ -41,10 +53,11 @@
   .pill{ font-size:11.5px; font-weight:800; padding:4px 10px; border-radius:20px; letter-spacing:.3px }
   .row .meta{ color:var(--mut); font-size:12.5px; margin-top:8px; line-height:1.6 }
   .row .actions{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center }
-  select, .frm input, .frm select{
+  select, .frm input, .frm select, .comm{
     background:var(--navy); color:var(--ink); border:1px solid var(--line); border-radius:8px;
     padding:9px 11px; font-family:inherit; font-size:13.5px; outline:none; }
-  .frm input:focus, .frm select:focus{ border-color:var(--gold) }
+  .frm input:focus, .frm select:focus, .comm:focus{ border-color:var(--gold) }
+  .comm{ width:80px }
   .btn{ border:none; border-radius:8px; padding:9px 14px; font-family:inherit; font-size:13px; font-weight:800; cursor:pointer; }
   .btn.gold{ background:linear-gradient(135deg,var(--gold),var(--gold2)); color:#0e1526 }
   .btn.ok{ background:var(--ok); color:#0c1f14 }
@@ -56,7 +69,6 @@
   .docs a{ color:var(--gold); text-decoration:none; font-weight:700 }
   .linkish{ background:none;border:none;color:var(--mut);font-family:inherit;font-size:12px;cursor:pointer;text-decoration:underline;padding:0 }
 
-  /* Yeni öğrenci formu */
   .frm{ background:var(--navy2); border:1px solid var(--line); border-radius:12px; padding:20px; }
   .frm h3{ font-size:13px; color:var(--gold); letter-spacing:.1em; margin:18px 0 10px; text-transform:uppercase }
   .frm h3:first-child{ margin-top:0 }
@@ -98,7 +110,7 @@
 <script src="js/config.js"></script>
 <script>
 const M = document.getElementById("main");
-let me = null, tab = "apps", agencyList = [];
+let me = null, tab = "apps", agencyList = [], appsCache = [], fQ = "", fSt = "", fAg = "";
 
 function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show");
                    setTimeout(()=>el.classList.remove("show"), 3200); }
@@ -154,16 +166,62 @@ function loadTab(){
 async function loadApps(){
   const { data, error } = await sb.from("applications")
     .select("*, students(id,first_name,last_name,email,phone,citizenship,lang,agency_id,agencies(name))")
-    .order("created_at",{ascending:false}).limit(200);
+    .order("created_at",{ascending:false}).limit(500);
   if (error){ M.innerHTML = `<div class="empty">Hata: ${esc(error.message)}</div>`; return; }
-  if (!data.length){
+  appsCache = data || [];
+  if (!appsCache.length){
     M.innerHTML = me.role==="admin"
       ? '<div class="empty">Henüz başvuru yok.</div>'
       : '<div class="empty">Henüz öğrenciniz yok. "+ Yeni Öğrenci" sekmesinden ilk öğrencinizi ekleyin.</div>';
     return;
   }
+  const agNames = [...new Set(appsCache.map(a=>a.students?.agencies?.name).filter(Boolean))].sort();
+  M.innerHTML = `
+    <div class="stats" id="stats"></div>
+    <div class="tools">
+      <input id="q" placeholder="🔍 Ara: isim, üniversite, e-posta, pasaport…" value="${esc(fQ)}">
+      ${me.role==="admin" ? `<select id="fAg">
+        <option value="">Tüm kaynaklar</option>
+        <option value="__direct" ${fAg==="__direct"?"selected":""}>Direkt başvurular</option>
+        ${agNames.map(n=>`<option ${fAg===n?"selected":""}>${esc(n)}</option>`).join("")}
+      </select>` : ""}
+    </div>
+    <div id="list"></div>`;
+  document.getElementById("q").addEventListener("input", e => { fQ = e.target.value; renderApps(); });
+  const fa = document.getElementById("fAg");
+  if (fa) fa.addEventListener("change", e => { fAg = e.target.value; renderApps(); });
+  renderApps();
+}
 
-  M.innerHTML = data.map(a => {
+function renderApps(){
+  // istatistik çipleri (tıklanınca durum filtresi)
+  const counts = {};
+  appsCache.forEach(a => counts[a.status] = (counts[a.status]||0)+1);
+  document.getElementById("stats").innerHTML =
+    `<span class="chip ${fSt===""?"on":""}" data-st="">Toplam <b>${appsCache.length}</b></span>` +
+    Object.entries(STATUS_LABELS).filter(([k])=>counts[k])
+      .map(([k,v]) => `<span class="chip ${fSt===k?"on":""}" data-st="${k}"
+        style="${fSt===k?"":""}">${v.t} <b>${counts[k]}</b></span>`).join("");
+  document.querySelectorAll("#stats .chip").forEach(c => c.onclick = () => { fSt = c.dataset.st; renderApps(); });
+
+  const q = fQ.toLowerCase();
+  const arr = appsCache.filter(a => {
+    const s = a.students || {};
+    if (fSt && a.status !== fSt) return false;
+    if (fAg === "__direct" && s.agency_id) return false;
+    if (fAg && fAg !== "__direct" && s.agencies?.name !== fAg) return false;
+    if (q){
+      const hay = [s.first_name,s.last_name,s.email,s.phone,s.citizenship,
+                   a.university,a.program1,a.program2,a.program3].join(" ").toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const list = document.getElementById("list");
+  if (!arr.length){ list.innerHTML = '<div class="empty">Filtreye uyan başvuru yok.</div>'; return; }
+
+  list.innerHTML = arr.map(a => {
     const s = a.students || {};
     const st = STATUS_LABELS[a.status] || {t:a.status,c:"#888"};
     const opts = Object.entries(STATUS_LABELS)
@@ -189,9 +247,9 @@ async function loadApps(){
     </div>`;
   }).join("");
 
-  M.querySelectorAll(".stSave").forEach(btn => btn.onclick = () => saveStatus(btn));
-  M.querySelectorAll(".histBtn").forEach(btn => btn.onclick = () => showHist(btn));
-  M.querySelectorAll(".docBtn").forEach(btn => btn.onclick = () => showDocs(btn));
+  list.querySelectorAll(".stSave").forEach(btn => btn.onclick = () => saveStatus(btn));
+  list.querySelectorAll(".histBtn").forEach(btn => btn.onclick = () => showHist(btn));
+  list.querySelectorAll(".docBtn").forEach(btn => btn.onclick = () => showDocs(btn));
 }
 
 async function saveStatus(btn){
@@ -306,7 +364,6 @@ async function saveStudent(){
 
   const agency_id = me.role==="admin" ? (v("f_agency") || null) : me.agency_id;
 
-  // 1) öğrenci
   const { data: stu, error: e1 } = await sb.from("students").insert({
     agency_id,
     first_name:v("f_first"), last_name:v("f_last"),
@@ -318,7 +375,6 @@ async function saveStudent(){
   }).select().single();
   if (e1){ btn.disabled=false; msg.className="fmsg err"; msg.textContent="Hata: "+e1.message; return; }
 
-  // 2) başvuru
   const { error: e2 } = await sb.from("applications").insert({
     student_id: stu.id, university:v("f_uni"),
     program1:v("f_p1"), program2:v("f_p2"), program3:v("f_p3"),
@@ -326,7 +382,6 @@ async function saveStudent(){
   });
   if (e2){ btn.disabled=false; msg.className="fmsg err"; msg.textContent="Başvuru hatası: "+e2.message; return; }
 
-  // 3) belgeler
   let up = 0, fail = 0;
   for (const t of Object.keys(DOC_TYPES)){
     const inp = document.getElementById("d_"+t);
@@ -354,6 +409,12 @@ async function loadAgencies(){
   const { data, error } = await sb.from("agencies").select("*").order("created_at",{ascending:false});
   if (error){ M.innerHTML = `<div class="empty">Hata: ${esc(error.message)}</div>`; return; }
   if (!data.length){ M.innerHTML = '<div class="empty">Kayıtlı acenta yok.</div>'; return; }
+
+  // acenta başına öğrenci sayısı
+  const { data: stuAgg } = await sb.from("students").select("agency_id");
+  const stuCount = {};
+  (stuAgg||[]).forEach(s => { if(s.agency_id) stuCount[s.agency_id]=(stuCount[s.agency_id]||0)+1; });
+
   const stMap = { pending:["Onay bekliyor","#f8c86a"], approved:["Aktif","#7ee2a8"],
                   rejected:["Reddedildi","#f28b82"], suspended:["Donduruldu","#93a0bd"] };
   M.innerHTML = data.map(a => {
@@ -361,17 +422,28 @@ async function loadAgencies(){
     return `<div class="row" data-id="${a.id}">
       <div class="top">
         <span class="name">${esc(a.name)}</span>
-        <span class="uni">${esc(a.city)} ${esc(a.country)}</span>
+        <span class="uni">${esc(a.city)} ${esc(a.country)} · Öğrenci: <b>${stuCount[a.id]||0}</b></span>
         <span class="pill" style="background:${c}22;color:${c};border:1px solid ${c}55">${t}</span>
       </div>
-      <div class="meta">${esc(a.contact_name)} · ${esc(a.email)} · ${esc(a.phone)} · Komisyon: %${a.commission_rate ?? 0}</div>
+      <div class="meta">${esc(a.contact_name)} · ${esc(a.email)} · ${esc(a.phone)}</div>
       <div class="actions">
+        <span style="color:var(--mut);font-size:12.5px">Komisyon %</span>
+        <input class="comm" type="number" min="0" max="100" step="0.5" value="${a.commission_rate ?? 0}">
+        <button class="btn gold commSave">Kaydet</button>
         ${a.status!=="approved" ? '<button class="btn ok agOk">Onayla</button>':""}
         ${a.status==="approved" ? '<button class="btn bad agSus">Dondur</button>':""}
         ${a.status==="pending" ? '<button class="btn bad agNo">Reddet</button>':""}
       </div>
     </div>`;
   }).join("");
+  M.querySelectorAll(".commSave").forEach(b => b.onclick = async () => {
+    const row = b.closest(".row");
+    const val = parseFloat(row.querySelector(".comm").value) || 0;
+    b.disabled = true;
+    const { error } = await sb.from("agencies").update({ commission_rate: val }).eq("id", row.dataset.id);
+    toast(error ? "Hata: "+error.message : "Komisyon %"+val+" kaydedildi ✓");
+    b.disabled = false;
+  });
   M.querySelectorAll(".agOk").forEach(b => b.onclick = () => setAgency(b,"approved"));
   M.querySelectorAll(".agNo").forEach(b => b.onclick = () => setAgency(b,"rejected"));
   M.querySelectorAll(".agSus").forEach(b => b.onclick = () => setAgency(b,"suspended"));
@@ -384,7 +456,20 @@ async function setAgency(btn, status){
   if (error){ toast("Hata: "+error.message); btn.disabled=false; return; }
   const role = status==="approved" ? "agency" : (status==="rejected" ? "rejected" : "pending");
   await sb.from("profiles").update({ role }).eq("agency_id", id);
+  if (status === "approved") sendWelcome(id);
   toast("Acenta güncellendi ✓"); loadAgencies(); refreshPendingBadge();
+}
+
+// Onaylanan acentaya hoş geldin maili (arka planda, hata olsa da akışı bozmaz)
+async function sendWelcome(agencyId){
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    await fetch("/api/acenta-mail", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + session.access_token },
+      body: JSON.stringify({ type:"welcome", agency_id: agencyId })
+    });
+  }catch(e){}
 }
 
 // ---------- ONAY BEKLEYEN ----------
@@ -427,7 +512,8 @@ async function approveUser(btn){
     await sb.from("agencies").update({ status:"approved" }).eq("id", agencyId);
   }
   await sb.from("profiles").update({ role:"agency", agency_id: agencyId }).eq("id", id);
-  toast(name + " onaylandı ✓"); loadPending(); refreshPendingBadge();
+  sendWelcome(agencyId);
+  toast(name + " onaylandı ✓ Hoş geldin maili gönderiliyor"); loadPending(); refreshPendingBadge();
 }
 
 async function refreshPendingBadge(){

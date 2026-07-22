@@ -111,6 +111,12 @@
       return;
     }
     await sb.auth.signOut(); // onaysız oturum açık kalmasın
+    // Admine bildirim maili (arka planda, başarısız olsa da akışı bozmaz)
+    try{ fetch("/api/acenta-mail", {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ type:"new", name:v("fname"), email:v("email"),
+        phone:v("phone"), company:v("company"), city:v("city"), country:v("country") })
+    }); }catch(e){}
     $("form").style.display = "none";
     $("done").style.display = "block";
   });

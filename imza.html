@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Al Azim — Mail İmzası Üretici</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{ --navy:#0e1526; --navy2:#141d33; --gold:#d4af37; --gold2:#b8962e;
+         --ink:#eef1f8; --mut:#93a0bd; --line:#243354; --ok:#7ee2a8; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{ font-family:'Manrope',sans-serif; background:var(--navy); color:var(--ink);
+        min-height:100vh; padding:24px; display:flex; justify-content:center; }
+  .wrap{ width:100%; max-width:860px }
+  h1{ font-size:20px; font-weight:800; margin-bottom:4px }
+  .sub{ color:var(--mut); font-size:13.5px; margin-bottom:20px }
+  .cols{ display:grid; grid-template-columns:320px 1fr; gap:18px }
+  @media(max-width:760px){ .cols{ grid-template-columns:1fr } }
+  .card{ background:var(--navy2); border:1px solid var(--line); border-radius:14px; padding:20px }
+  label{ display:block; font-size:11.5px; font-weight:700; color:var(--mut);
+         margin:13px 0 5px; text-transform:uppercase; letter-spacing:.6px }
+  label:first-child{ margin-top:0 }
+  input{ width:100%; padding:10px 12px; border-radius:9px; font-size:14px;
+         background:var(--navy); border:1px solid var(--line); color:var(--ink);
+         font-family:inherit; outline:none }
+  input:focus{ border-color:var(--gold) }
+  .btn{ width:100%; margin-top:18px; padding:12px; border:none; border-radius:10px;
+        background:linear-gradient(135deg,var(--gold),var(--gold2)); color:#0e1526;
+        font-family:inherit; font-size:14.5px; font-weight:800; cursor:pointer }
+  .btn:hover{ opacity:.92 }
+  .msg{ margin-top:10px; font-size:13px; text-align:center; color:var(--ok); min-height:17px }
+  .prevBox{ background:#fff; border-radius:10px; padding:20px; overflow:auto }
+  .hint{ color:var(--mut); font-size:12.5px; margin-top:12px; line-height:1.7 }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Mail İmzası Üretici</h1>
+  <p class="sub">Bilgileri gir → imza sağda canlı güncellenir → kopyala → Gmail imza ayarına yapıştır.</p>
+  <div class="cols">
+    <div class="card">
+      <label>Ad Soyad</label><input id="i_name" value="MYRAT PERMANOV">
+      <label>Unvan (1. satır)</label><input id="i_t1" value="Firma Yetkilisi ve Avukat">
+      <label>Unvan (2. satır)</label><input id="i_t2" value="Eğitim Danışmanı">
+      <label>Telefon</label><input id="i_tel" value="+90 534 689 84 93">
+      <label>Faks / 2. Telefon</label><input id="i_fax" value="+90 544 151 99 98">
+      <label>E-posta</label><input id="i_mail" value="info@alazimdanismanlik.com">
+      <button class="btn" id="copy">İmzayı kopyala</button>
+      <div class="msg" id="msg"></div>
+      <div class="hint"><b>Gmail'e ekleme:</b> Gmail → ⚙️ Ayarlar → Tüm ayarları gör →
+      Genel → İmza → Yeni oluştur → buraya <b>Ctrl+V</b> → en altta Değişiklikleri Kaydet.
+      Aynı imza Zoho/Outlook/telefon uygulamalarında da çalışır.</div>
+    </div>
+    <div class="card">
+      <div class="prevBox" id="prev"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s||"").replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  function sigHtml(){
+    const name=esc($("i_name").value), t1=esc($("i_t1").value), t2=esc($("i_t2").value),
+          tel=esc($("i_tel").value), fax=esc($("i_fax").value), mail=esc($("i_mail").value);
+    return `<table cellpadding="0" cellspacing="0" border="0" style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1c2333;line-height:1.55">
+  <tr>
+    <td style="padding-right:16px;vertical-align:top">
+      <table cellpadding="0" cellspacing="0" border="0"><tr><td
+        style="width:64px;height:64px;background:#d4af37;border-radius:12px;text-align:center;vertical-align:middle;
+               font-weight:bold;font-size:22px;color:#0e1526;font-family:Arial,sans-serif">AZ</td></tr></table>
+    </td>
+    <td style="border-left:3px solid #d4af37;padding-left:16px;vertical-align:top">
+      <div style="font-weight:bold;font-size:15px;color:#0e1526;letter-spacing:.3px">${name}</div>
+      ${t1?`<div style="color:#5a6478">${t1}</div>`:""}
+      ${t2?`<div style="color:#5a6478">${t2}</div>`:""}
+      <div style="height:8px;line-height:8px">&nbsp;</div>
+      <div style="color:#5a6478">Şirinevler Mahallesi Meriç Sokak No:20<br>İstanbul / Turkey</div>
+      <div style="height:8px;line-height:8px">&nbsp;</div>
+      ${tel?`<div>T: <a href="tel:${tel.replace(/[^+\d]/g,"")}" style="color:#1c2333;text-decoration:none">${tel}</a></div>`:""}
+      ${fax?`<div>F: <span style="color:#1c2333">${fax}</span></div>`:""}
+      <div style="height:8px;line-height:8px">&nbsp;</div>
+      ${mail?`<div><a href="mailto:${mail}" style="color:#b8962e;text-decoration:none;font-weight:bold">${mail}</a></div>`:""}
+      <div><a href="https://alazimdanismanlik.com" style="color:#b8962e;text-decoration:none;font-weight:bold">www.alazimdanismanlik.com</a></div>
+    </td>
+  </tr>
+</table>`;
+  }
+
+  function render(){ $("prev").innerHTML = sigHtml(); }
+  ["i_name","i_t1","i_t2","i_tel","i_fax","i_mail"].forEach(id => $(id).addEventListener("input", render));
+  render();
+
+  $("copy").addEventListener("click", async () => {
+    const html = sigHtml();
+    try{
+      await navigator.clipboard.write([ new ClipboardItem({
+        "text/html": new Blob([html], {type:"text/html"}),
+        "text/plain": new Blob([$("prev").innerText], {type:"text/plain"})
+      })]);
+      $("msg").textContent = "Kopyalandı ✓ Gmail imza kutusuna yapıştır.";
+    }catch(e){
+      // eski tarayıcı yedeği: önizlemeyi seçip kopyala
+      const r = document.createRange(); r.selectNodeContents($("prev"));
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      document.execCommand("copy"); sel.removeAllRanges();
+      $("msg").textContent = "Kopyalandı ✓ Gmail imza kutusuna yapıştır.";
+    }
+  });
+</script>
+</body>
+</html>
