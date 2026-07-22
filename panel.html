@@ -105,6 +105,7 @@
     <button class="on" data-tab="dash" id="tabDash">Özet</button>
     <button data-tab="apps" id="tabApps">Başvurular</button>
     <button data-tab="add" id="tabAdd">+ Yeni Öğrenci</button>
+    <button data-tab="unis" id="tabUnis">Üniversiteler</button>
     <button data-tab="agencies" id="tabAgencies">Acentalar</button>
     <button data-tab="pending" id="tabPending">Onay bekleyen<span class="badge" id="pendBadge" style="display:none">0</span></button>
   </nav>
@@ -164,6 +165,7 @@ function loadTab(){
   M.innerHTML = '<div class="empty">Yükleniyor…</div>';
   if (tab==="dash") loadDash();
   else if (tab==="apps") loadApps();
+  else if (tab==="unis") loadUnis();
   else if (tab==="add") renderAddForm();
   else if (tab==="agencies") loadAgencies();
   else loadPending();
@@ -207,6 +209,153 @@ async function loadDash(){
       </div></div>`;}).join("") || '<div class="empty">Henüz başvuru yok.</div>'}`;
 }
 
+// ---------- ÜNİVERSİTELER ----------
+let uniCache = [];
+async function fetchUnis(){
+  const { data } = await sb.from("universities").select("id,name,city").order("name");
+  uniCache = data || [];
+  return uniCache;
+}
+
+async function loadUnis(){
+  await fetchUnis();
+  const { data: progs } = await sb.from("programs").select("university_id");
+  const pc = {}; (progs||[]).forEach(p => pc[p.university_id]=(pc[p.university_id]||0)+1);
+  M.innerHTML = `
+    ${me.role==="admin" ? `<div class="tools">
+      <input id="newUniName" placeholder="Yeni üniversite adı…" style="max-width:340px">
+      <button class="btn gold" id="newUniBtn">Ekle</button></div>` : ""}
+    ${uniCache.map(u => `<div class="row" style="cursor:pointer" data-id="${u.id}">
+      <div class="top"><span class="name">${esc(u.name)}</span>
+        <span class="uni">${esc(u.city)} · Program: <b>${pc[u.id]||0}</b></span>
+        <span class="pill" style="background:var(--navy3);color:var(--gold);border:1px solid var(--line)">Programları gör →</span>
+      </div></div>`).join("") || '<div class="empty">Üniversite yok. guncelleme-4.sql çalıştırıldı mı?</div>'}`;
+  M.querySelectorAll(".row[data-id]").forEach(r => r.onclick = () => showUni(r.dataset.id));
+  const nb = document.getElementById("newUniBtn");
+  if (nb) nb.onclick = async (e) => {
+    e.stopPropagation();
+    const name = document.getElementById("newUniName").value.trim();
+    if (!name) return;
+    const { error } = await sb.from("universities").insert({ name });
+    toast(error ? "Hata: "+error.message : "Üniversite eklendi ✓");
+    if (!error) loadUnis();
+  };
+}
+
+async function showUni(uid){
+  const uni = uniCache.find(u=>u.id===uid);
+  const { data: progs, error } = await sb.from("programs").select("*")
+    .eq("university_id", uid).order("level").order("name");
+  if (error){ M.innerHTML = `<div class="empty">Hata: ${esc(error.message)}</div>`; return; }
+
+  const rows = (progs||[]).map(p => `<div class="row" data-id="${p.id}">
+    <div class="top">
+      <span class="name" style="font-size:14px">${esc(p.name)}</span>
+      <span class="uni">[${esc(p.level)}] · ${esc(p.language)} · ${p.years||"?"} yıl</span>
+      <span class="pill" style="background:${p.available?"var(--ok)":"var(--bad)"}22;
+        color:${p.available?"var(--ok)":"var(--bad)"};border:1px solid var(--line)">
+        ${p.available?"Açık":"Kapalı"}</span>
+    </div>
+    <div class="meta">Fiyat: <b style="color:var(--ink)">$${p.price??"—"}</b>
+      ${p.discount_price!=null?` · İndirimli: <b style="color:var(--gold)">$${p.discount_price}</b>`:""}
+      ${p.deposit!=null?` · Depozito: $${p.deposit}`:""}
+      ${p.notes?` · ${esc(p.notes)}`:""}
+      ${me.role==="admin"?` · <button class="linkish pDel">sil</button>`:""}</div>
+  </div>`).join("");
+
+  M.innerHTML = `
+    <div class="tools"><button class="btn ghost" id="backUnis">← Üniversiteler</button>
+      <input id="pq" placeholder="🔍 Program ara…" ></div>
+    <div class="secTitle">${esc(uni?.name||"")} — ${progs?.length||0} program</div>
+    <div id="plist">${rows || '<div class="empty">Henüz program girilmedi.</div>'}</div>
+    ${me.role==="admin" ? `
+    <div class="frm" style="margin-top:14px">
+      <h3>Program Ekle</h3>
+      <div class="fgrid">
+        <div><label>Program adı *</label><input id="p_name"></div>
+        <div><label>Seviye</label><select id="p_level">
+          <option>Lisans</option><option>Önlisans</option><option>Yüksek Lisans</option>
+          <option>Doktora</option><option>Dil Kursu</option></select></div>
+        <div><label>Dil</label><select id="p_lang"><option>İngilizce</option><option>Türkçe</option></select></div>
+        <div><label>Yıl</label><input id="p_years" type="number" value="4"></div>
+        <div><label>Fiyat $</label><input id="p_price" type="number" step="0.01"></div>
+        <div><label>İndirimli $</label><input id="p_disc" type="number" step="0.01"></div>
+        <div><label>Depozito $</label><input id="p_dep" type="number" step="0.01"></div>
+        <div><label>Not</label><input id="p_notes"></div>
+      </div>
+      <button class="btn gold" id="p_add">Programı ekle</button>
+      <details style="margin-top:14px">
+        <summary style="cursor:pointer;color:var(--gold);font-weight:700;font-size:13px">Toplu aktar (satır satır yapıştır)</summary>
+        <p style="color:var(--mut);font-size:12.5px;margin:8px 0">Her satır: <b>Program ; Seviye ; Dil ; Yıl ; Fiyat ; İndirimli ; Depozito</b><br>
+        Örnek: <code>Diş Hekimliği ; Lisans ; İngilizce ; 5 ; 25000 ; 23000 ; 2000</code> (boş bırakılan alan atlanır)</p>
+        <textarea id="bulk" rows="6" placeholder="Tıp ; Lisans ; İngilizce ; 6 ; 30000 ; 28000 ; 3000&#10;Hemşirelik ; Lisans ; Türkçe ; 4 ; 4000 ; 3500 ;"></textarea>
+        <button class="btn gold" id="bulkBtn" style="margin-top:10px">Toplu ekle</button>
+        <span class="fmsg" id="bulkMsg"></span>
+      </details>
+    </div>` : ""}`;
+
+  document.getElementById("backUnis").onclick = loadUnis;
+  document.getElementById("pq").addEventListener("input", e => {
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll("#plist .row").forEach(r =>
+      r.style.display = r.textContent.toLowerCase().includes(q) ? "" : "none");
+  });
+  M.querySelectorAll(".pDel").forEach(b => b.onclick = async (e) => {
+    e.stopPropagation();
+    if (!confirm("Program silinsin mi?")) return;
+    await sb.from("programs").delete().eq("id", b.closest(".row").dataset.id);
+    showUni(uid);
+  });
+  const pa = document.getElementById("p_add");
+  if (pa) pa.onclick = async () => {
+    const v = id => document.getElementById(id).value.trim();
+    if (!v("p_name")){ toast("Program adı gerekli"); return; }
+    const num = x => v(x)===""?null:parseFloat(v(x));
+    const { error } = await sb.from("programs").insert({
+      university_id: uid, name:v("p_name"), level:v("p_level"), language:v("p_lang"),
+      years: parseInt(v("p_years"))||null, price:num("p_price"),
+      discount_price:num("p_disc"), deposit:num("p_dep"), notes:v("p_notes") });
+    toast(error ? "Hata: "+error.message : "Program eklendi ✓");
+    if (!error) showUni(uid);
+  };
+  const bb = document.getElementById("bulkBtn");
+  if (bb) bb.onclick = async () => {
+    const lines = document.getElementById("bulk").value.split("\n").map(l=>l.trim()).filter(Boolean);
+    const msg = document.getElementById("bulkMsg");
+    if (!lines.length) return;
+    const rows = lines.map(l => {
+      const [name,level,lang,years,price,disc,dep] = l.split(";").map(x=>(x||"").trim());
+      if (!name) return null;
+      const num = x => (!x||isNaN(parseFloat(x)))?null:parseFloat(x);
+      return { university_id: uid, name, level: level||"Lisans", language: lang||"İngilizce",
+               years: parseInt(years)||null, price:num(price), discount_price:num(disc), deposit:num(dep) };
+    }).filter(Boolean);
+    const { error } = await sb.from("programs").insert(rows);
+    msg.className = "fmsg " + (error?"err":"ok");
+    msg.textContent = error ? "Hata: "+error.message : rows.length+" program eklendi ✓";
+    if (!error) setTimeout(()=>showUni(uid), 900);
+  };
+}
+
+// CSV dışa aktarma (filtrelenmiş liste)
+let lastFiltered = [];
+function exportCsv(){
+  const head = ["No","Ad","Soyad","E-posta","Telefon","Vatandaşlık","Üniversite","1.Tercih","Seviye","Dönem","Durum","Acenta","Tarih"];
+  const lines = [head.join(";")].concat(lastFiltered.map(a => {
+    const s = a.students||{};
+    return [a.app_no||"", s.first_name||"", s.last_name||"", s.email||"", s.phone||"",
+      s.citizenship||"", a.university||"", a.program1||"", a.level||"", a.semester||"",
+      (STATUS_LABELS[a.status]||{t:a.status}).t, s.agencies?.name||"Direkt",
+      new Date(a.created_at).toLocaleDateString("tr-TR")]
+      .map(x => '"'+String(x).replace(/"/g,'""')+'"').join(";");
+  }));
+  const blob = new Blob(["\ufeff"+lines.join("\n")], {type:"text/csv;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "alazim-basvurular-"+new Date().toISOString().slice(0,10)+".csv";
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
 // ---------- BAŞVURULAR / ÖĞRENCİLERİM ----------
 async function loadApps(){
   const { data, error } = await sb.from("applications")
@@ -230,8 +379,11 @@ async function loadApps(){
         <option value="__direct" ${fAg==="__direct"?"selected":""}>Direkt başvurular</option>
         ${agNames.map(n=>`<option ${fAg===n?"selected":""}>${esc(n)}</option>`).join("")}
       </select>` : ""}
+      ${me.role==="admin" ? `<button class="btn ghost" id="csvBtn">⬇ CSV</button>` : ""}
     </div>
     <div id="list"></div>`;
+  const cb = document.getElementById("csvBtn");
+  if (cb) cb.onclick = exportCsv;
   document.getElementById("q").addEventListener("input", e => { fQ = e.target.value; renderApps(); });
   const fa = document.getElementById("fAg");
   if (fa) fa.addEventListener("change", e => { fAg = e.target.value; renderApps(); });
@@ -262,6 +414,7 @@ function renderApps(){
     }
     return true;
   });
+  lastFiltered = arr;
 
   const list = document.getElementById("list");
   if (!arr.length){ list.innerHTML = '<div class="empty">Filtreye uyan başvuru yok.</div>'; return; }
@@ -377,10 +530,12 @@ function renderAddForm(){
     </div>
     <h3>Başvuru</h3>
     <div class="fgrid">
-      <div><label>Üniversite *</label><input id="f_uni" placeholder="İstanbul Medipol Üniversitesi"></div>
-      <div><label>1. Tercih Bölüm *</label><input id="f_p1"></div>
-      <div><label>2. Tercih</label><input id="f_p2"></div>
-      <div><label>3. Tercih</label><input id="f_p3"></div>
+      <div><label>Üniversite *</label><input id="f_uni" list="uniList" placeholder="Seç veya yaz…">
+        <datalist id="uniList"></datalist></div>
+      <div><label>1. Tercih Bölüm *</label><input id="f_p1" list="progList">
+        <datalist id="progList"></datalist></div>
+      <div><label>2. Tercih</label><input id="f_p2" list="progList"></div>
+      <div><label>3. Tercih</label><input id="f_p3" list="progList"></div>
       <div><label>Seviye</label><select id="f_level">
         <option>Lisans</option><option>Önlisans</option><option>Yüksek Lisans</option>
         <option>Doktora</option><option>Dil Kursu</option></select></div>
@@ -399,6 +554,19 @@ function renderAddForm(){
     <div class="fmsg" id="f_msg"></div>
   </div>`;
   document.getElementById("f_save").onclick = saveStudent;
+  // Üniversite & program otomatik seçim
+  fetchUnis().then(us => {
+    document.getElementById("uniList").innerHTML = us.map(u=>`<option value="${esc(u.name)}">`).join("");
+  });
+  document.getElementById("f_uni").addEventListener("change", async e => {
+    const uni = uniCache.find(u => u.name === e.target.value.trim());
+    const dl = document.getElementById("progList");
+    if (!uni){ dl.innerHTML=""; return; }
+    const { data } = await sb.from("programs").select("name,level,language,price")
+      .eq("university_id", uni.id).eq("available", true).order("name");
+    dl.innerHTML = (data||[]).map(p =>
+      `<option value="${esc(p.name)}">[${esc(p.level)}] ${esc(p.language)}${p.price!=null?" · $"+p.price:""}</option>`).join("");
+  });
 }
 
 async function saveStudent(){

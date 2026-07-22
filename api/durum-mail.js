@@ -1,9 +1,6 @@
-// /api/durum-mail — durum değişince öğrenciye otomatik mail (Resend)
-// Vercel Environment Variables (portal projesinde):
-//   SB_URL          = https://gydvyqtynsetictrucfp.supabase.co
-//   SB_SECRET       = sb_secret_...        (Supabase Secret key — SADECE burada!)
-//   RESEND_API_KEY  = re_...               (mevcut Resend hesabından)
-//   RESEND_FROM     = Al Azim Danismanlik <basvuru@alazimdanismanlik.com>
+// /api/durum-mail — durum değişince: 1) öğrenciye kendi dilinde mail
+//                                    2) öğrenci bir acentaya bağlıysa acentaya bilgi maili
+// Env: SB_URL, SB_SECRET, RESEND_API_KEY, RESEND_FROM
 
 const TXT = {
   tr: {
@@ -72,6 +69,22 @@ const TXT = {
   }
 };
 
+function esc(s){ return String(s||"").replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function shell(inner){
+  return `<div style="background:#0e1526;padding:32px 16px;font-family:Arial,sans-serif">
+    <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden">
+      <div style="background:linear-gradient(135deg,#d4af37,#b8962e);padding:22px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:#0e1526;letter-spacing:.5px">AL AZIM</div>
+        <div style="font-size:12px;color:#0e1526;opacity:.75">alazimdanismanlik.com</div>
+      </div>
+      <div style="padding:28px 26px;color:#1c2333;font-size:15px;line-height:1.7">${inner}</div>
+      <div style="background:#f2f4f9;padding:14px;text-align:center;color:#8a93a8;font-size:12px">
+        Şirinevler Mah. Meriç Sok. No:20, İstanbul · +90 534 689 84 93
+      </div>
+    </div></div>`;
+}
+
 async function sbGet(path){
   const r = await fetch(process.env.SB_URL + "/rest/v1/" + path, {
     headers: { apikey: process.env.SB_SECRET, Authorization: "Bearer " + process.env.SB_SECRET }
@@ -80,11 +93,20 @@ async function sbGet(path){
   return r.json();
 }
 
+async function resend(to, subject, html){
+  const r = await fetch("https://api.resend.com/emails", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json", Authorization:"Bearer " + process.env.RESEND_API_KEY },
+    body: JSON.stringify({ from: process.env.RESEND_FROM, to, subject, html })
+  });
+  return r.ok;
+}
+
 export default async function handler(req, res){
   if (req.method !== "POST") return res.status(405).json({ error:"POST only" });
 
   try {
-    // 1) İsteği yapan gerçekten girişli bir panel kullanıcısı mı?
+    // 1) admin doğrulama
     const token = (req.headers.authorization || "").replace("Bearer ","");
     if (!token) return res.status(401).json({ error:"no token" });
     const uRes = await fetch(process.env.SB_URL + "/auth/v1/user", {
@@ -92,64 +114,50 @@ export default async function handler(req, res){
     });
     if (!uRes.ok) return res.status(401).json({ error:"invalid token" });
     const user = await uRes.json();
-
-    // 2) Admin mi?
     const profs = await sbGet(`profiles?id=eq.${user.id}&select=role`);
     if (!profs.length || profs[0].role !== "admin")
       return res.status(403).json({ error:"admin only" });
 
-    // 3) Başvuru + öğrenci bilgisi
+    // 2) başvuru + öğrenci + acenta
     const { application_id } = req.body || {};
     if (!application_id) return res.status(400).json({ error:"application_id required" });
     const apps = await sbGet(
-      `applications?id=eq.${application_id}&select=status,university,students(first_name,last_name,email,lang)`);
+      `applications?id=eq.${application_id}&select=status,university,app_no,students(first_name,last_name,email,lang,agencies(name,email))`);
     if (!apps.length) return res.status(404).json({ error:"application not found" });
     const app = apps[0], st = app.students;
-    if (!st?.email) return res.status(200).json({ ok:false, note:"öğrencinin maili yok" });
 
-    // 4) Dile göre mail hazırla
-    const L = TXT[st.lang] || TXT.tk;
-    const name = `${st.first_name} ${st.last_name}`.trim();
-    const msg = L.st[app.status] || app.status;
-    const html = `
-    <div style="background:#0e1526;padding:32px 16px;font-family:Arial,sans-serif">
-      <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden">
-        <div style="background:linear-gradient(135deg,#d4af37,#b8962e);padding:22px;text-align:center">
-          <div style="font-size:20px;font-weight:800;color:#0e1526;letter-spacing:.5px">AL AZIM</div>
-          <div style="font-size:12px;color:#0e1526;opacity:.75">alazimdanismanlik.com</div>
-        </div>
-        <div style="padding:28px 26px;color:#1c2333;font-size:15px;line-height:1.7">
-          <p style="margin:0 0 12px"><b>${L.hello(name)}</b></p>
-          <p style="margin:0 0 16px">${L.body(app.university)}</p>
-          <div style="background:#f6f1df;border-left:4px solid #d4af37;padding:14px 16px;border-radius:8px;font-weight:700">
-            ${msg}
-          </div>
-          <p style="margin:18px 0 0;color:#5a6478;font-size:13.5px">${L.foot}</p>
-          <p style="margin:22px 0 0;font-weight:700">${L.team}</p>
-        </div>
-        <div style="background:#f2f4f9;padding:14px;text-align:center;color:#8a93a8;font-size:12px">
-          Şirinevler Mah. Meriç Sok. No:20, İstanbul · +90 534 689 84 93
-        </div>
-      </div>
-    </div>`;
-
-    // 5) Resend ile gönder
-    const send = await fetch("https://api.resend.com/emails", {
-      method:"POST",
-      headers:{ "Content-Type":"application/json",
-                Authorization:"Bearer " + process.env.RESEND_API_KEY },
-      body: JSON.stringify({
-        from: process.env.RESEND_FROM,
-        to: [st.email],
-        subject: L.subj(app.university),
-        html
-      })
-    });
-    if (!send.ok){
-      const t = await send.text();
-      return res.status(200).json({ ok:false, resend_error:t });
+    // 3) öğrenciye kendi dilinde
+    let studentOk = false;
+    if (st?.email){
+      const L = TXT[st.lang] || TXT.tk;
+      const name = `${st.first_name} ${st.last_name}`.trim();
+      const msg = L.st[app.status] || app.status;
+      const html = shell(`
+        <p style="margin:0 0 12px"><b>${esc(L.hello(name))}</b></p>
+        <p style="margin:0 0 16px">${L.body(esc(app.university))}</p>
+        <div style="background:#f6f1df;border-left:4px solid #d4af37;padding:14px 16px;border-radius:8px;font-weight:700">${msg}</div>
+        <p style="margin:18px 0 0;color:#5a6478;font-size:13.5px">${L.foot}</p>
+        <p style="margin:22px 0 0;font-weight:700">${L.team}</p>`);
+      studentOk = await resend([st.email], L.subj(app.university), html);
     }
-    return res.status(200).json({ ok:true });
+
+    // 4) acentaya bilgi (öğrenci bir acentaya bağlıysa)
+    let agencyOk = false;
+    const ag = st?.agencies;
+    if (ag?.email){
+      const trMsg = (TXT.tr.st[app.status] || app.status);
+      const html = shell(`
+        <p style="margin:0 0 12px"><b>Sayın ${esc(ag.name)},</b></p>
+        <p style="margin:0 0 16px">Öğrenciniz <b>${esc(st.first_name)} ${esc(st.last_name)}</b>'in
+        <b>#${esc(app.app_no||"")}</b> numaralı ${esc(app.university)} başvurusunda güncelleme var:</p>
+        <div style="background:#f6f1df;border-left:4px solid #d4af37;padding:14px 16px;border-radius:8px;font-weight:700">${trMsg}</div>
+        <p style="margin:18px 0 0;font-size:13.5px">Detaylar:
+          <a href="https://portal.alazimdanismanlik.com" style="color:#b8962e;font-weight:700">portal.alazimdanismanlik.com</a></p>`);
+      agencyOk = await resend([ag.email],
+        `📌 #${app.app_no||""} ${st.first_name} ${st.last_name} — durum güncellendi`, html);
+    }
+
+    return res.status(200).json({ ok: studentOk || agencyOk, student: studentOk, agency: agencyOk });
   } catch (e){
     return res.status(500).json({ error: e.message });
   }

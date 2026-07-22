@@ -146,10 +146,10 @@ function render(){
     <details style="margin-top:12px">
       <summary style="cursor:pointer;color:var(--gold);font-weight:700;font-size:13.5px">+ Yeni başvuru ekle (2. üniversite vb.)</summary>
       <div class="fgrid" style="margin-top:12px">
-        <div><label>Üniversite *</label><input id="a_uni"></div>
-        <div><label>1. Tercih *</label><input id="a_p1"></div>
-        <div><label>2. Tercih</label><input id="a_p2"></div>
-        <div><label>3. Tercih</label><input id="a_p3"></div>
+        <div><label>Üniversite *</label><input id="a_uni" list="uniList"><datalist id="uniList"></datalist></div>
+        <div><label>1. Tercih *</label><input id="a_p1" list="progList"><datalist id="progList"></datalist></div>
+        <div><label>2. Tercih</label><input id="a_p2" list="progList"></div>
+        <div><label>3. Tercih</label><input id="a_p3" list="progList"></div>
         <div><label>Seviye</label><select id="a_level">
           <option>Lisans</option><option>Önlisans</option><option>Yüksek Lisans</option>
           <option>Doktora</option><option>Dil Kursu</option></select></div>
@@ -165,6 +165,22 @@ function render(){
   document.getElementById("s_save").onclick = saveStudent;
   document.getElementById("d_up").onclick = uploadDoc;
   document.getElementById("a_add").onclick = addApp;
+
+  // Üniversite & program otomatik seçim
+  sb.from("universities").select("id,name").order("name").then(({data}) => {
+    window._unis = data || [];
+    document.getElementById("uniList").innerHTML =
+      window._unis.map(u=>`<option value="${esc(u.name)}">`).join("");
+  });
+  document.getElementById("a_uni").addEventListener("change", async e => {
+    const uni = (window._unis||[]).find(u => u.name === e.target.value.trim());
+    const dl = document.getElementById("progList");
+    if (!uni){ dl.innerHTML=""; return; }
+    const { data } = await sb.from("programs").select("name,level,language,price")
+      .eq("university_id", uni.id).eq("available", true).order("name");
+    dl.innerHTML = (data||[]).map(p =>
+      `<option value="${esc(p.name)}">[${esc(p.level)}] ${esc(p.language)}${p.price!=null?" · $"+p.price:""}</option>`).join("");
+  });
 }
 
 async function saveStudent(){
