@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Al Azim — Acenta Başvurusu | Ekibimize Katılın</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0e1526; --navy2:#141d33; --gold:#d4af37; --gold2:#b8962e;
+    --ink:#eef1f8; --mut:#93a0bd; --line:#243354; --bad:#f28b82; --ok:#7ee2a8;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:'Manrope',sans-serif; background:var(--navy); color:var(--ink);
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
+    background-image:radial-gradient(ellipse 80% 60% at 50% -10%, #1b2847 0%, transparent 60%);
+  }
+  .card{ width:100%; max-width:460px; background:var(--navy2); border:1px solid var(--line);
+         border-radius:16px; padding:34px 30px; }
+  .logo{ text-align:center; margin-bottom:8px }
+  .logo .mark{ display:inline-flex; align-items:center; justify-content:center; width:52px; height:52px;
+               border-radius:13px; margin-bottom:10px; background:linear-gradient(135deg,var(--gold),var(--gold2));
+               color:#0e1526; font-weight:800; font-size:20px; }
+  .logo h1{ font-size:19px; font-weight:800 }
+  .sub{ color:var(--mut); font-size:13.5px; text-align:center; line-height:1.6; margin-bottom:10px }
+  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:0 12px }
+  .full{ grid-column:1/-1 }
+  label{ display:block; font-size:12px; font-weight:700; color:var(--mut);
+         margin:14px 0 5px; text-transform:uppercase; letter-spacing:.6px }
+  input{ width:100%; padding:11px 13px; border-radius:10px; font-size:14.5px;
+         background:var(--navy); border:1px solid var(--line); color:var(--ink);
+         font-family:inherit; outline:none; transition:border-color .15s }
+  input:focus{ border-color:var(--gold) }
+  button{ width:100%; margin-top:22px; padding:13px; border:none; border-radius:10px;
+          background:linear-gradient(135deg,var(--gold),var(--gold2)); color:#0e1526;
+          font-family:inherit; font-size:15px; font-weight:800; cursor:pointer }
+  button:hover{ opacity:.92 } button:disabled{ opacity:.5; cursor:wait }
+  .msg{ margin-top:13px; font-size:13.5px; text-align:center; min-height:18px; line-height:1.5 }
+  .msg.err{ color:var(--bad) } .msg.ok{ color:var(--ok) }
+  .done{ text-align:center; padding:26px 4px; display:none }
+  .done .big{ font-size:44px; margin-bottom:12px }
+  .done h2{ font-size:18px; margin-bottom:10px }
+  .done p{ color:var(--mut); font-size:14px; line-height:1.7 }
+  .foot{ margin-top:20px; text-align:center; color:var(--mut); font-size:12px }
+  .foot a{ color:var(--gold); text-decoration:none }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo"><div class="mark">AZ</div><h1>Ekibimize Katılın</h1></div>
+    <p class="sub">Al Azim Danışmanlık acenta ağına başvurun.<br>Başvurunuz yönetici onayından sonra aktif olur.</p>
+
+    <div id="form">
+      <div class="grid">
+        <div class="full"><label>Ad Soyad *</label><input id="fname" autocomplete="name"></div>
+        <div class="full"><label>Firma / Acenta Adı</label><input id="company" placeholder="Şahıs iseniz boş bırakın"></div>
+        <div><label>Ülke *</label><input id="country" placeholder="Türkmenistan"></div>
+        <div><label>Şehir *</label><input id="city" placeholder="Aşkabat"></div>
+        <div class="full"><label>Telefon (WhatsApp) *</label><input id="phone" type="tel" placeholder="+993 ..."></div>
+        <div class="full"><label>E-posta *</label><input id="email" type="email" autocomplete="email"></div>
+        <div><label>Şifre *</label><input id="pass" type="password" autocomplete="new-password"></div>
+        <div><label>Şifre (tekrar) *</label><input id="pass2" type="password" autocomplete="new-password"></div>
+      </div>
+      <button id="btn">Başvuruyu gönder</button>
+      <div class="msg" id="msg"></div>
+    </div>
+
+    <div class="done" id="done">
+      <div class="big">🎉</div>
+      <h2>Başvurunuz alındı!</h2>
+      <p>Acenta başvurunuz yöneticiye iletildi. Onaylandığında panele
+         <b>portal.alazimdanismanlik.com</b> adresinden e-posta ve şifrenizle giriş yapabileceksiniz.</p>
+    </div>
+
+    <div class="foot">Zaten hesabınız var mı? <a href="index.html">Giriş yapın</a></div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script>
+  const $ = id => document.getElementById(id);
+  $("btn").addEventListener("click", async () => {
+    const v = id => $(id).value.trim();
+    const msg = $("msg");
+    if(!v("fname")||!v("country")||!v("city")||!v("phone")||!v("email")||!$("pass").value){
+      msg.className="msg err"; msg.textContent="Yıldızlı alanların tümü zorunludur."; return;
+    }
+    if($("pass").value.length < 8){
+      msg.className="msg err"; msg.textContent="Şifre en az 8 karakter olmalı."; return;
+    }
+    if($("pass").value !== $("pass2").value){
+      msg.className="msg err"; msg.textContent="Şifreler birbiriyle uyuşmuyor."; return;
+    }
+    $("btn").disabled = true; msg.className="msg"; msg.textContent="Gönderiliyor…";
+
+    const { error } = await sb.auth.signUp({
+      email: v("email"),
+      password: $("pass").value,
+      options: { data: {
+        full_name: v("fname"), phone: v("phone"),
+        company: v("company"), country: v("country"), city: v("city")
+      }}
+    });
+    if (error){
+      $("btn").disabled = false; msg.className="msg err";
+      msg.textContent = /already registered/i.test(error.message)
+        ? "Bu e-posta ile zaten bir hesap var. Giriş yapmayı deneyin."
+        : "Hata: " + error.message;
+      return;
+    }
+    await sb.auth.signOut(); // onaysız oturum açık kalmasın
+    $("form").style.display = "none";
+    $("done").style.display = "block";
+  });
+</script>
+</body>
+</html>

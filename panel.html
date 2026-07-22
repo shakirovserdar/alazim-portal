@@ -258,7 +258,7 @@ async function loadPending(){
   M.innerHTML = data.map(p => `<div class="row" data-id="${p.id}">
       <div class="top"><span class="name">${esc(p.full_name)||"(isim yok)"}</span>
         <span class="uni">${esc(p.email)} · ${esc(p.phone)}</span></div>
-      <div class="meta">Kayıt: ${dt(p.created_at)}</div>
+      <div class="meta">${p.company?("Firma: <b>"+esc(p.company)+"</b> · "):""}${esc(p.city)} ${esc(p.country)} · Kayıt: ${dt(p.created_at)}</div>
       <div class="actions">
         <button class="btn ok pOk">Onayla (acenta yap)</button>
         <button class="btn bad pNo">Reddet</button>
@@ -280,8 +280,9 @@ async function approveUser(btn){
   let agencyId = prof.agency_id;
   if (!agencyId){
     const { data: ag, error } = await sb.from("agencies")
-      .insert({ name: prof.full_name || prof.email, contact_name: prof.full_name,
-                email: prof.email, phone: prof.phone, status:"approved", owner_id: id })
+      .insert({ name: prof.company || prof.full_name || prof.email, contact_name: prof.full_name,
+                email: prof.email, phone: prof.phone, country: prof.country || "",
+                city: prof.city || "", status:"approved", owner_id: id })
       .select().single();
     if (error){ toast("Hata: "+error.message); btn.disabled=false; return; }
     agencyId = ag.id;
